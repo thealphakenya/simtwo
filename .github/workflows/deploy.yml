@@ -16,7 +16,9 @@ jobs:
       - name: Log in to Railway using RAILWAY_TOKEN
         run: |
           npm install -g @railway/cli
-          echo "${{ secrets.RAILWAY_TOKEN }}" | railway login --token
+          railway login
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Build and push Docker image
         run: |
