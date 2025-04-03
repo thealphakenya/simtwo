@@ -1,0 +1,24 @@
+{
+  "services": [
+    {
+      "type": "docker",
+      "name": "flask-api",
+      "build": {
+        "dockerfile": "./Dockerfile"
+      },
+      "envs": [
+        {
+          "key": "BINANCE_API_KEY",
+          "value": "your_actual_binance_api_key"
+        },
+        {
+          "key": "BINANCE_SECRET_KEY",
+          "value": "your_actual_binance_secret_key"
+        }
+      ],
+      "ports": {
+        "5000": "5000"
+      }
+    }
+  ]
+}
