@@ -16,11 +16,7 @@ jobs:
       - name: Log in to Railway using RAILWAY_TOKEN
         run: |
           npm install -g @railway/cli
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.RAILWAY_TOKEN }}" > ~/.npmrc
-          railway config:use ${RAILWAY_TOKEN}
-          railway link --project simtwoproject
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          echo "${{ secrets.RAILWAY_TOKEN }}" | railway login --token
 
       - name: Build and push Docker image
         run: |
