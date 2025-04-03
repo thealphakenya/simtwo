@@ -16,6 +16,7 @@ jobs:
       - name: Log in to Railway
         run: |
           npm install -g @railway/cli
+          mkdir -p ~/.railway   # Ensure that the .railway directory exists
           echo "RAILWAY_TOKEN=${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/config.json
           railway login
 
