@@ -1,0 +1,22 @@
+# .gitignore
+
+# Python bytecode
+*.pyc
+*.pyo
+*.pyd
+__pycache__
+
+# Virtual environment
+venv/
+env/
+
+# API keys and sensitive data
+config.py
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# IDE settings
+.vscode/
+.idea/
+.env

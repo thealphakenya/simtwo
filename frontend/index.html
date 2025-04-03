@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simtwo Trading Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Simtwo Trading Dashboard</h1>
+    <nav>
+      <ul>
+        <li><a href="#home">Home</a></li>
+        <li><a href="#strategy-settings">Strategy Settings</a></li>
+        <li><a href="#backtesting">Backtesting</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Live Market Data Section -->
+    <section id="market-data">
+      <h2>Live Market Feed</h2>
+      <div id="chart-container"></div>
+    </section>
+
+    <!-- Strategy Settings Section -->
+    <section id="strategy-settings">
+      <h2>AI Strategy Settings</h2>
+      <form>
+        <label for="algorithm-type">Select AI Algorithm:</label>
+        <select id="algorithm-type">
+          <option value="reinforcement-learning">Reinforcement Learning</option>
+          <option value="neural-network">Neural Network</option>
+          <option value="decision-tree">Decision Tree</option>
+        </select>
+
+        <label for="risk-management">Enable Risk Management:</label>
+        <input type="checkbox" id="risk-management">
+
+        <label for="simtwo-ai-managed">Use Simtwo AI Managed Preferences:</label>
+        <input type="checkbox" id="simtwo-ai-managed" checked>
+
+        <label for="auto-trade">Enable Auto Trade:</label>
+        <input type="checkbox" id="auto-trade">
+      </form>
+    </section>
+
+    <!-- Real-Time Simulation Section -->
+    <section id="backtesting">
+      <h2>Run AI Strategies in Real-Time</h2>
+      <button id="run-simulation-btn">Run Simulation</button>
+      <div id="simulation-results"></div>
+    </section>
+
+    <!-- Emergency Stop Section -->
+    <section>
+      <button id="emergency-stop-btn" class="emergency-stop">Emergency Stop</button>
+    </section>
+
+    <!-- Performance Metrics Section -->
+    <section>
+      <h3>Performance Metrics</h3>
+      <div id="performance-metrics">
+        <p>P&L: $1500</p>
+        <p>Sharpe Ratio: 1.75</p>
+        <p>Win Rate: 65%</p>
+        <p>Max Drawdown: -10%</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Simtwo AI Trading System</p>
+  </footer>
+</body>
+</html>
