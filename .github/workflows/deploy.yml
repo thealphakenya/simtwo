@@ -13,10 +13,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Log in to Railway using RAILWAY_TOKEN
+      - name: Install Railway CLI
         run: |
           npm install -g @railway/cli
-          railway login
+
+      - name: Log in to Railway using RAILWAY_TOKEN
+        run: |
+          echo $RAILWAY_TOKEN | railway login --token
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
