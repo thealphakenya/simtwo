@@ -47,6 +47,11 @@ API_SECRET = "your_api_secret"
 
 order_executor = OrderExecution(API_KEY, API_SECRET)
 
+# Root Route (to ensure home page is working)
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({"message": "Welcome to the Flask app!"}), 200
+
 @app.route('/api/place_order', methods=['POST'])
 def place_order():
     try:
