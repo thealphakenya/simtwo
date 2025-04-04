@@ -12,8 +12,8 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && pip uninstall -y numpy && pip install numpy==1.21.6
 
-# Copy the entire application source code from the backend directory
-COPY backend/ .
+# Copy the entire application source code from the backend directory to /app/backend
+COPY ./backend /app/backend
 
 # Expose the application's port (assuming Flask uses 5000)
 EXPOSE 5000
