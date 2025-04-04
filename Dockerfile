@@ -5,8 +5,7 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Copy the requirements.txt file from the backend directory
-COPY backend/requirements.txt . 
-ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+COPY backend/requirements.txt .
 
 # Install dependencies from the requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
@@ -14,7 +13,7 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip uninstall -y numpy && pip install numpy==1.21.6
 
 # Copy the entire application source code from the backend directory
-COPY backend/ .  # Ensure this copies all the necessary files from backend
+COPY backend/ .
 
 # Expose the application's port (assuming Flask uses 5000)
 EXPOSE 5000
