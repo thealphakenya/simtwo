@@ -5,36 +5,43 @@ from flask import Flask, request, jsonify
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.enums import SIDE_BUY, SIDE_SELL
 
-# Set up proper logging configuration for Gunicorn
+# ===========================
+# 📌 Logging Setup
+# ===========================
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),  # Stream logs to standard output (stdout)
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 
-# Log sys.path to ensure backend directory is included
+# Log initial sys.path
 logging.info("Debug: Initial sys.path in app.py: %s", sys.path)
 
-# Ensure backend directory is on the path (only necessary if running standalone)
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))  # Add the current directory to sys.path
+# Add /app/backend to sys.path if not present
+backend_path = "/app/backend"
+if backend_path not in sys.path:
+    sys.path.append(backend_path)
+    logging.info("Debug: Added /app/backend to sys.path")
 
-# Log sys.path again to confirm the path update
+# Confirm updated sys.path
 logging.info("Debug: Updated sys.path in app.py: %s", sys.path)
 
-# Attempt to import OrderExecution and TradingLogic and log any issues
+# ===========================
+# 🧠 Import Trading Logic
+# ===========================
 try:
-    from backend.trading_logic.order_execution import OrderExecution, TradingLogic
+    from trading_logic.order_execution import OrderExecution, TradingLogic
     logging.info("Debug: Successfully imported OrderExecution and TradingLogic")
 except ModuleNotFoundError as e:
     logging.error("Debug: ModuleNotFoundError: %s", e)
     raise
 
-# Initialize the Flask app
+# ===========================
+# 🚀 Flask App Setup
+# ===========================
 app = Flask(__name__)
 
-# Replace with your real Binance API keys in production
+# Replace with your actual Binance API keys
 API_KEY = "your_api_key"
 API_SECRET = "your_api_secret"
 
@@ -65,11 +72,9 @@ def place_order():
         logging.error("Error in place_order endpoint: %s", str(e))
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
 # ===========================
-# ⏰ TradingLogic Scheduler
+# ⏰ Scheduled Trading Logic
 # ===========================
-
 trading_logic = TradingLogic(API_KEY, API_SECRET)
 
 def run_trading_job():
@@ -87,7 +92,6 @@ def run_trading_job():
     except Exception as e:
         logging.error("Trading logic error: %s", str(e))
 
-# Set up APScheduler
 scheduler = BackgroundScheduler()
 scheduler.add_job(run_trading_job, trigger='interval', seconds=60)
 scheduler.start()
@@ -97,14 +101,14 @@ import atexit
 atexit.register(lambda: scheduler.shutdown())
 
 # ===========================
-# ✅ Health Check Endpoint
+# ✅ Health Check
 # ===========================
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({"status": "healthy"}), 200
 
 # ===========================
-# 🚀 App Run
+# 🏃 Run App Locally
 # ===========================
 if __name__ == "__main__":
     app.run(debug=True)
