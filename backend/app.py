@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from binance.client import Client
-from ai_models.model import predict_trade, train_model
+from ai_models.model import TradingAI, train_model, predict_trade
 from trading_logic.order_execution import execute_order
 from data.data_fetcher import get_market_data
 
@@ -17,6 +17,24 @@ from ai_models.model import ReinforcementLearning, NeuralNetwork
 # Store AI strategy state
 ai_managed_preferences = True
 auto_trade_enabled = False
+
+# Load the trained model or train a new one
+model = None
+try:
+    model = TradingAI()
+    model.load_model('saved_model.h5')  # Try loading an existing model
+except:
+    print("Model not found. Training new model.")
+    # Assuming 'data' is loaded somewhere, like a CSV file with historical data
+    # data = pd.read_csv('historical_data.csv')  # Replace with actual data source
+    model = train_model(data)
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.json
+    # Preprocess the input data as required for prediction
+    prediction = predict_trade(data, model)
+    return jsonify({"prediction": prediction.tolist()})
 
 @app.route('/api/market_data', methods=['GET'])
 def get_market_data_api():
