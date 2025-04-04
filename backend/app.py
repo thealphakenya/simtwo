@@ -5,26 +5,34 @@ from flask import Flask, request, jsonify
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.enums import SIDE_BUY, SIDE_SELL
 
+# Set up proper logging configuration for Gunicorn
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),  # Stream logs to standard output (stdout)
+    ]
+)
+
 # Log sys.path to ensure backend directory is included
-print("Debug: Initial sys.path in app.py:", sys.path)
+logging.info("Debug: Initial sys.path in app.py: %s", sys.path)
 
 # Ensure backend directory is on the path (only necessary if running standalone)
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))  # Add the current directory to sys.path
 
 # Log sys.path again to confirm the path update
-print("Debug: Updated sys.path in app.py:", sys.path)
+logging.info("Debug: Updated sys.path in app.py: %s", sys.path)
 
 # Attempt to import OrderExecution and TradingLogic and log any issues
 try:
     from backend.trading_logic.order_execution import OrderExecution, TradingLogic
-    print("Debug: Successfully imported OrderExecution and TradingLogic")
+    logging.info("Debug: Successfully imported OrderExecution and TradingLogic")
 except ModuleNotFoundError as e:
-    print(f"Debug: ModuleNotFoundError: {e}")
+    logging.error("Debug: ModuleNotFoundError: %s", e)
     raise
 
 # Initialize the Flask app
 app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
 
 # Replace with your real Binance API keys in production
 API_KEY = "your_api_key"
@@ -54,6 +62,7 @@ def place_order():
             return jsonify({"status": "error", "message": "Order execution failed."}), 500
 
     except Exception as e:
+        logging.error("Error in place_order endpoint: %s", str(e))
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -76,7 +85,7 @@ def run_trading_job():
                 trading_logic.execute_order(signal)
 
     except Exception as e:
-        logging.error(f"Trading logic error: {e}")
+        logging.error("Trading logic error: %s", str(e))
 
 # Set up APScheduler
 scheduler = BackgroundScheduler()

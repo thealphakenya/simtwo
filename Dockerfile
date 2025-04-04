@@ -2,12 +2,11 @@ FROM tensorflow/tensorflow:2.8.0
 
 WORKDIR /app
 
-COPY requirements.txt /app/
-
+COPY requirements.txt ./
 RUN pip install --upgrade pip && \
     pip install --default-timeout=300 --retries=10 --no-cache-dir -r requirements.txt
 
-COPY . /app
+COPY . .
 
 ENV PYTHONPATH=/app
 

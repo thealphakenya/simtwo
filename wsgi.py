@@ -1,6 +1,7 @@
 import sys
 import os
 import logging
+from app import app  # Import the app object from your app.py file
 
 # Log current working directory
 logging.info(f"Current working directory: {os.getcwd()}")
@@ -12,4 +13,5 @@ logging.info(f"Current sys.path: {sys.path}")
 backend_directory = '/app/backend'
 logging.info(f"Contents of {backend_directory}: {os.listdir(backend_directory)}")
 
-# Continue with the rest of the code...
+if __name__ == "__main__":
+    app.run()  # Optionally, you can run the app directly in development mode
