@@ -1,27 +1,24 @@
-# Use a lightweight Python image
+# Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
-# Set the working directory inside the container
+# Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements.txt file from the backend directory
-COPY backend/requirements.txt ./  # Copy the requirements.txt to /app
+# Copy the current directory contents into the container at /app
+COPY . /app
 
-# Install dependencies from the requirements.txt
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt \
-    && pip uninstall -y numpy && pip install numpy==1.21.6
-
-# Copy the entire application source code from the backend directory to /app/backend
-COPY ./backend /app/backend  # This will copy the entire backend folder to /app
-
-# Expose the application's port (assuming Flask uses 5000)
-EXPOSE 5000
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Set environment variables for Flask to listen on all network interfaces and run in production mode
-ENV FLASK_APP=backend/app.py  # Ensure FLASK_APP points to the correct location
+ENV FLASK_APP=backend/app.py
+# Ensure FLASK_APP points to the correct location
+
 ENV FLASK_RUN_HOST=0.0.0.0
 ENV FLASK_ENV=production
 
-# Default command to start the application
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+# Expose port 5000 for Flask
+EXPOSE 5000
+
+# Run Flask in production mode
+CMD ["flask", "run", "--host=0.0.0.0"]
