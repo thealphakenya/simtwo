@@ -5,7 +5,7 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Copy the requirements.txt file from the backend directory
-COPY backend/requirements.txt .
+COPY backend/requirements.txt ./
 
 # Install dependencies from the requirements.txt
 RUN pip install --no-cache-dir --upgrade pip \
