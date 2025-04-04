@@ -1,12 +1,11 @@
 import sys
 import os
 import logging
-
 from flask import Flask, request, jsonify
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.enums import SIDE_BUY, SIDE_SELL
 
-# Ensure backend directory is on the path (in case this runs standalone)
+# Ensure backend directory is on the path (only necessary if running standalone)
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 # ✅ Updated import path for OrderExecution and TradingLogic
