@@ -2,12 +2,19 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-COPY . /app  # Ensure the full app is copied
-RUN pip install --no-cache-dir -r requirements.txt
+RUN mkdir -p /app
+
+COPY requirements.txt /app/
+RUN pip install --upgrade pip && \
+    for i in $(seq 1 5); do pip install --no-cache-dir -r requirements.txt && break || sleep 15; done
+
+COPY . /app
 
 ENV PYTHONPATH=/app
 ENV FLASK_APP=backend.app
 ENV FLASK_ENV=production
+
+RUN ls -R /app
 
 EXPOSE 5000
 
