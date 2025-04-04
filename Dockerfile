@@ -8,7 +8,9 @@ RUN pip install --upgrade pip && \
 
 COPY . .
 
-ENV PYTHONPATH=/app
+RUN mv /app/backend/training_logic /app/backend/trading_logic
+
+ENV PYTHONPATH=/app:/app/backend
 
 EXPOSE 5000
 
