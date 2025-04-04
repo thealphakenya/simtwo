@@ -1,9 +1,12 @@
 import time
 import logging
 from binance.client import Client
-from binance.enums import SIDE_BUY, SIDE_SELL, ORDER_TYPE_MARKET, ORDER_TYPE_LIMIT, TIME_IN_FORCE_GTC
+from binance.enums import (
+    SIDE_BUY, SIDE_SELL,
+    ORDER_TYPE_MARKET, ORDER_TYPE_LIMIT,
+    TIME_IN_FORCE_GTC
+)
 
-# Order Execution Class
 class OrderExecution:
     def __init__(self, api_key, api_secret):
         """Initialize the Binance client with API credentials."""
@@ -20,7 +23,7 @@ class OrderExecution:
             )
             return order
         except Exception as e:
-            print(f"[Error] Market order failed: {e}")
+            logging.error(f"Market order failed: {e}")
             return None
 
     def place_limit_order(self, symbol='BTCUSDT', side=SIDE_BUY, quantity=1.0, price=50000.0):
@@ -36,16 +39,15 @@ class OrderExecution:
             )
             return order
         except Exception as e:
-            print(f"[Error] Limit order failed: {e}")
+            logging.error(f"Limit order failed: {e}")
             return None
 
     def cancel_order(self, symbol='BTCUSDT', order_id=None):
         """Cancels an order."""
         try:
-            result = self.client.cancel_order(symbol=symbol, orderId=order_id)
-            return result
+            return self.client.cancel_order(symbol=symbol, orderId=order_id)
         except Exception as e:
-            print(f"[Error] Order cancellation failed: {e}")
+            logging.error(f"Order cancellation failed: {e}")
             return None
 
     def get_open_orders(self, symbol='BTCUSDT'):
@@ -53,7 +55,7 @@ class OrderExecution:
         try:
             return self.client.get_open_orders(symbol=symbol)
         except Exception as e:
-            print(f"[Error] Fetching open orders failed: {e}")
+            logging.error(f"Fetching open orders failed: {e}")
             return []
 
     def execute_trade(self, symbol, side, quantity):
@@ -61,76 +63,83 @@ class OrderExecution:
         return self.place_market_order(symbol, side, quantity)
 
 
-# Trading Logic Class with Binance Integration
+# Optional: A TradingLogic class for algorithmic logic
 class TradingLogic:
     def __init__(self, api_key, api_secret, symbol='BTCUSDT', short_window=50, long_window=200):
         self.symbol = symbol
         self.short_window = short_window
         self.long_window = long_window
-        self.position = None  # No position at the start
+        self.position = None
         self.order_executor = OrderExecution(api_key, api_secret)
 
     def fetch_data(self):
-        """Fetch market data (this should fetch from Binance or use historical data)."""
-        data = self.order_executor.client.get_historical_klines(self.symbol, Client.KLINE_INTERVAL_1HOUR, "200 hours ago UTC")
-        return {
-            'close': [float(item[4]) for item in data]  # Close prices from the historical data
-        }
+        """Fetch market data (historical klines)."""
+        try:
+            data = self.order_executor.client.get_historical_klines(
+                self.symbol,
+                Client.KLINE_INTERVAL_1HOUR,
+                "200 hours ago UTC"
+            )
+            return {
+                'close': [float(item[4]) for item in data]
+            }
+        except Exception as e:
+            logging.error(f"Error fetching historical data: {e}")
+            return {'close': []}
 
     def calculate_indicators(self, data):
-        """Calculate the short and long moving averages."""
-        short_sma = sum(data['close'][-self.short_window:]) / self.short_window  # Simple Moving Average (SMA)
-        long_sma = sum(data['close'][-self.long_window:]) / self.long_window
+        """Calculate SMA indicators."""
+        closes = data['close']
+        if len(closes) < max(self.short_window, self.long_window):
+            logging.warning("Not enough data to calculate indicators.")
+            return None, None
+        short_sma = sum(closes[-self.short_window:]) / self.short_window
+        long_sma = sum(closes[-self.long_window:]) / self.long_window
         return short_sma, long_sma
 
     def check_trade_signal(self, short_sma, long_sma):
-        """Check for a trade signal based on the crossover of short and long moving averages."""
+        """Check for crossover signals."""
         if short_sma > long_sma and self.position != 'long':
             return 'buy'
         elif short_sma < long_sma and self.position != 'short':
             return 'sell'
-        else:
-            return None  # No trade signal
+        return None
 
     def execute_order(self, signal):
-        """Executes a trade based on the signal."""
+        """Execute trade based on signal."""
         if signal == 'buy':
             logging.info(f"Executing BUY order for {self.symbol}")
-            self.order_executor.execute_trade(self.symbol, SIDE_BUY, 1.0)  # Adjust quantity as needed
+            self.order_executor.execute_trade(self.symbol, SIDE_BUY, 1.0)
             self.position = 'long'
         elif signal == 'sell':
             logging.info(f"Executing SELL order for {self.symbol}")
-            self.order_executor.execute_trade(self.symbol, SIDE_SELL, 1.0)  # Adjust quantity as needed
+            self.order_executor.execute_trade(self.symbol, SIDE_SELL, 1.0)
             self.position = 'short'
 
     def run(self):
-        """Main trading loop: fetch data, calculate indicators, check for signals, execute orders."""
+        """Main strategy loop."""
         while True:
             try:
-                # Step 1: Fetch market data
                 data = self.fetch_data()
-
-                # Step 2: Calculate the moving averages
                 short_sma, long_sma = self.calculate_indicators(data)
+                if short_sma is None or long_sma is None:
+                    time.sleep(60)
+                    continue
 
-                # Step 3: Check if there’s a trade signal
                 signal = self.check_trade_signal(short_sma, long_sma)
-
-                # Step 4: Execute the trade if there’s a signal
                 if signal:
                     self.execute_order(signal)
 
-                # Step 5: Sleep for a while before next check (e.g., 60 seconds)
                 time.sleep(60)
-
             except Exception as e:
                 logging.error(f"Error in trading loop: {e}")
                 time.sleep(60)
 
-# Example API keys for testing
-api_key = 'your_api_key'
-api_secret = 'your_api_secret'
 
-# Instantiate and run the trading logic
-trading_logic = TradingLogic(api_key, api_secret)
-trading_logic.run()
+# Don't run the bot when this module is imported
+if __name__ == "__main__":
+    # Only used for manual testing
+    api_key = 'your_api_key'
+    api_secret = 'your_api_secret'
+    trading_logic = TradingLogic(api_key, api_secret)
+    trading_logic.run()
