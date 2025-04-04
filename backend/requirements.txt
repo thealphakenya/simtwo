@@ -1,4 +1,4 @@
-# Python environment management
+# Python environment management 
 python-dotenv==0.19.2
 
 # Binance API library
@@ -6,6 +6,7 @@ python-binance==1.0.15
 
 # Machine learning libraries
 tensorflow==2.8.0
+numpy==1.21.6  # Compatible version of numpy
 scikit-learn==0.24.2
 
 # Data manipulation
