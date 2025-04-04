@@ -76,6 +76,13 @@ import atexit
 atexit.register(lambda: scheduler.shutdown())
 
 # ===========================
+# ✅ Health Check Endpoint
+# ===========================
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "healthy"}), 200
+
+# ===========================
 # 🚀 App Run
 # ===========================
 if __name__ == "__main__":
