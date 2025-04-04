@@ -5,7 +5,6 @@ import sys
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 # Import trading logic properly
-from .trading_logic.order_execution import OrderExecution
+sys.path.append("/app")
 
-
-
+from backend.trading_logic.order_execution import OrderExecution
