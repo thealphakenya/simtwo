@@ -1,84 +1,96 @@
 from binance.client import Client
-from binance.enums import SIDE_BUY, SIDE_SELL, TIME_IN_FORCE_GTC
+from binance.enums import SIDE_BUY, SIDE_SELL, ORDER_TYPE_MARKET, ORDER_TYPE_LIMIT, TIME_IN_FORCE_GTC
 
 class OrderExecution:
     def __init__(self, api_key, api_secret):
-        """Initialize the client with provided API key and secret."""
+        """Initialize the Binance client with API credentials."""
         self.client = Client(api_key, api_secret)
 
     def place_market_order(self, symbol='BTCUSDT', side=SIDE_BUY, quantity=1.0):
         """
-        Place a market order (buy/sell).
-        
-        :param symbol: Trading pair symbol (default: BTCUSDT)
-        :param side: Side of the trade (buy or sell)
-        :param quantity: Quantity of the asset to trade
-        :return: Order response if successful, None if error occurs
+        Places a market order.
+
+        :param symbol: Trading pair symbol (e.g., BTCUSDT)
+        :param side: Trade direction ('BUY' or 'SELL')
+        :param quantity: Amount of asset to trade
+        :return: Order response or None if an error occurs
         """
         try:
-            order = self.client.order_market(
+            order = self.client.create_order(
                 symbol=symbol,
                 side=side,
+                type=ORDER_TYPE_MARKET,
                 quantity=quantity
             )
             return order
         except Exception as e:
-            print(f"Error placing market order: {e}")
+            print(f"[Error] Market order failed: {e}")
             return None
 
-    def place_limit_order(self, symbol='BTCUSDT', side=SIDE_BUY, quantity=1.0, price=50000.0, time_in_force=TIME_IN_FORCE_GTC):
+    def place_limit_order(self, symbol='BTCUSDT', side=SIDE_BUY, quantity=1.0, price=50000.0):
         """
-        Place a limit order (buy/sell).
-        
-        :param symbol: Trading pair symbol (default: BTCUSDT)
-        :param side: Side of the trade (buy or sell)
-        :param quantity: Quantity of the asset to trade
-        :param price: The price at which the order should be executed
-        :param time_in_force: Time in force for the order (default: GTC - Good Till Canceled)
-        :return: Order response if successful, None if error occurs
+        Places a limit order.
+
+        :param symbol: Trading pair symbol (e.g., BTCUSDT)
+        :param side: Trade direction ('BUY' or 'SELL')
+        :param quantity: Amount of asset to trade
+        :param price: Order execution price
+        :return: Order response or None if an error occurs
         """
         try:
-            order = self.client.order_limit(
+            order = self.client.create_order(
                 symbol=symbol,
                 side=side,
+                type=ORDER_TYPE_LIMIT,
                 quantity=quantity,
                 price=str(price),
-                timeInForce=time_in_force
+                timeInForce=TIME_IN_FORCE_GTC
             )
             return order
         except Exception as e:
-            print(f"Error placing limit order: {e}")
+            print(f"[Error] Limit order failed: {e}")
             return None
 
     def cancel_order(self, symbol='BTCUSDT', order_id=None):
         """
-        Cancel a specific order.
-        
-        :param symbol: Trading pair symbol (default: BTCUSDT)
-        :param order_id: The order ID to cancel
-        :return: Cancellation result if successful, None if error occurs
+        Cancels an order.
+
+        :param symbol: Trading pair symbol
+        :param order_id: Order ID to cancel
+        :return: Cancellation response or None if an error occurs
         """
         try:
-            result = self.client.cancel_order(
-                symbol=symbol,
-                orderId=order_id
-            )
+            result = self.client.cancel_order(symbol=symbol, orderId=order_id)
             return result
         except Exception as e:
-            print(f"Error canceling order: {e}")
+            print(f"[Error] Order cancellation failed: {e}")
             return None
 
     def get_open_orders(self, symbol='BTCUSDT'):
         """
-        Get a list of open orders.
-        
-        :param symbol: Trading pair symbol (default: BTCUSDT)
-        :return: List of open orders if successful, empty list if error occurs
+        Retrieves open orders.
+
+        :param symbol: Trading pair symbol
+        :return: List of open orders or an empty list if an error occurs
         """
         try:
-            open_orders = self.client.get_open_orders(symbol=symbol)
-            return open_orders
+            return self.client.get_open_orders(symbol=symbol)
         except Exception as e:
-            print(f"Error getting open orders: {e}")
+            print(f"[Error] Fetching open orders failed: {e}")
             return []
 
+    def execute_trade(self, symbol, side, quantity):
+        """
+        Executes a trade (wrapper for market order).
+
+        :param symbol: Trading pair symbol
+        :param side: Trade direction ('BUY' or 'SELL')
+        :param quantity: Amount of asset to trade
+        :return: Order response or None if an error occurs
+        """
+        return self.place_market_order(symbol, side, quantity)
+
+
+# Standalone function for executing a trade (Optional)
+def execute_trade():
+    print("Executing trade using OrderExecution class.")
