@@ -5,12 +5,24 @@ from flask import Flask, request, jsonify
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.enums import SIDE_BUY, SIDE_SELL
 
+# Log sys.path to ensure backend directory is included
+print("Debug: Initial sys.path in app.py:", sys.path)
+
 # Ensure backend directory is on the path (only necessary if running standalone)
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))  # Add the current directory to sys.path
 
-# ✅ Updated import path for OrderExecution and TradingLogic
-from backend.trading_logic.order_execution import OrderExecution, TradingLogic
+# Log sys.path again to confirm the path update
+print("Debug: Updated sys.path in app.py:", sys.path)
 
+# Attempt to import OrderExecution and TradingLogic and log any issues
+try:
+    from backend.trading_logic.order_execution import OrderExecution, TradingLogic
+    print("Debug: Successfully imported OrderExecution and TradingLogic")
+except ModuleNotFoundError as e:
+    print(f"Debug: ModuleNotFoundError: {e}")
+    raise
+
+# Initialize the Flask app
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
