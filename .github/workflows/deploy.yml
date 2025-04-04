@@ -13,21 +13,25 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    # Set up Node.js 16 (required for Railway CLI)
+    # Set up Node.js (since the Railway CLI requires Node.js)
     - name: Set up Node.js 16
       uses: actions/setup-node@v2
       with:
         node-version: '16'
 
-    # Install Railway CLI
-    - name: Install Railway CLI
-      run: npm install -g @railway/cli
+    # Set up Railway CLI using the custom GitHub action
+    - name: Setup Railway CLI
+      uses: MadeByThePinsHub/setup-railway-cli-action@v0.1.0
+      with:
+        # Optional: You can specify additional settings such as npm-mode or repo-url if needed.
+        # For now, we are using the default settings
+        npm-mode: false
 
     # Login to Railway using the token stored in GitHub Secrets
     - name: Railway Login
       run: echo ${{ secrets.RAILWAY_TOKEN }} | railway login --token
 
-    # Link the Railway project using the project ID
+    # Link the Railway project using the project ID stored in GitHub Secrets
     - name: Railway Link
       env:
         RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}  # Store your Railway Project ID as a secret
