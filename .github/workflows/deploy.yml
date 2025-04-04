@@ -15,34 +15,29 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # Set up Node.js for running script.js
-    - name: Set up Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: 22
-
-    # Set up Docker
+    # Set up Docker Buildx (for building multi-platform images)
     - name: Set up Docker
       uses: docker/setup-buildx-action@v2
 
-    # Build Docker image and tag it
+    # Build Docker image from the Dockerfile
     - name: Build Docker image
       run: |
-        docker build -t simtwo:latest .
-    
-    # Log in to Docker Hub (or your Docker registry if different)
+        docker build -t my-flask-app:latest .
+
+    # Log in to Docker registry (Docker Hub or your custom registry)
     - name: Log in to Docker registry
       uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    # Push the Docker image to the registry (Docker Hub or custom registry)
+    # Tag the image and push to Docker registry (Docker Hub or your custom registry)
     - name: Push Docker image to registry
       run: |
-        docker tag simtwo:latest ${{ secrets.DOCKER_USERNAME }}/simtwo:latest
-        docker push ${{ secrets.DOCKER_USERNAME }}/simtwo:latest
+        docker tag my-flask-app:latest ${{ secrets.DOCKER_USERNAME }}/my-flask-app:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/my-flask-app:latest
 
-    # Trigger Railway deployment using script.js
+    # Trigger Railway deployment via Railway API (replace with your Railway API token)
     - name: Trigger Railway Deployment
-      run: node script.js ${{ secrets.RAILWAY_API_TOKEN }}
+      run: |
+        node script.js ${{ secrets.RAILWAY_API_TOKEN }}

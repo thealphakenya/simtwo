@@ -4,12 +4,12 @@ WORKDIR /app
 
 COPY . /app
 
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt gunicorn  # Ensure gunicorn is installed
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 ENV FLASK_APP=backend.app
 ENV FLASK_RUN_HOST=0.0.0.0
 ENV FLASK_ENV=production
-ENV PYTHONPATH=/app:/app/backend
+ENV PYTHONPATH=/app
 
 EXPOSE 5000
 
