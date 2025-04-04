@@ -1,45 +1,35 @@
 import sys
 import os
 import logging
+import atexit
+import hmac
+import hashlib
 from flask import Flask, request, jsonify
 from apscheduler.schedulers.background import BackgroundScheduler
-from binance.client import Client
 from binance.enums import SIDE_BUY, SIDE_SELL
-from ai_models.model import ReinforcementLearning, NeuralNetwork
-from trading_logic.order_execution import OrderExecution, execute_order
-from data.data_fetcher import get_market_data
+from binance.client import Client
 
 # ===========================
-# 📌 Logging Setup
+# 🔧 Add /backend to sys.path
 # ===========================
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-
-# Log initial sys.path
-logging.info("Debug: Initial sys.path in app.py: %s", sys.path)
-
-# Add /app/backend to sys.path if not present
-backend_path = "/app/backend"
+backend_path = os.path.join(os.path.dirname(__file__), 'backend')
 if backend_path not in sys.path:
     sys.path.append(backend_path)
-    logging.info("Debug: Added /app/backend to sys.path")
-
-# Confirm updated sys.path
-logging.info("Debug: Updated sys.path in app.py: %s", sys.path)
 
 # ===========================
-# Binance Client Initialization
+# 📦 Backend Module Imports
 # ===========================
-binance_api_key = "your_api_key"
-binance_api_secret = "your_api_secret"
-client = Client(binance_api_key, binance_api_secret)
+from ai_models.model import ReinforcementLearning, NeuralNetwork
+from trading_logic.order_execution import OrderExecution, execute_order
+from data.data_fetcher import DataFetcher
+from config import config
 
-# AI Models - Store AI strategy state
-ai_managed_preferences = True
-auto_trade_enabled = False
+# ===========================
+# 🔐 API Setup
+# ===========================
+client = Client(config.API_KEY, config.API_SECRET)
+fetcher = DataFetcher(config.API_KEY, config.API_SECRET)
+order_executor = OrderExecution(config.API_KEY, config.API_SECRET)
 
 # ===========================
 # 🚀 Flask App Setup
@@ -47,66 +37,133 @@ auto_trade_enabled = False
 app = Flask(__name__)
 
 # ===========================
-# Trading Logic and Routes
+# ⚙️ Global State
+# ===========================
+ai_managed_preferences = True
+auto_trade_enabled = False
+
+# ===========================
+# 🔁 API Routes
 # ===========================
 
-@app.route('/', methods=['GET'])
+@app.route('/')
 def home():
-    return jsonify({"message": "Welcome to the Flask app!"}), 200
+    return jsonify({"message": "Welcome to Simtwo Trading API"}), 200
 
 @app.route('/api/market_data', methods=['GET'])
 def get_market_data_api():
-    # Get real-time market data (e.g., price, volume)
-    data = get_market_data('BTCUSDT')  # Example for BTC/USD pair
+    data = fetcher.fetch_ticker(config.TRADE_SYMBOL)
     return jsonify(data)
+
+@app.route('/api/order_book', methods=['GET'])
+def order_book():
+    symbol = request.args.get('symbol', config.TRADE_SYMBOL)
+    return jsonify(fetcher.fetch_order_book(symbol))
+
+@app.route('/api/ohlcv', methods=['GET'])
+def ohlcv():
+    symbol = request.args.get('symbol', config.TRADE_SYMBOL)
+    df = fetcher.fetch_ohlcv_data(symbol)
+    return df.to_json(orient='records')
+
+@app.route('/api/balance', methods=['GET'])
+def balance():
+    return jsonify(fetcher.fetch_balance())
 
 @app.route('/api/place_order', methods=['POST'])
 def place_order():
     order_data = request.json
-    symbol = order_data['symbol']
-    quantity = order_data['quantity']
-    order_type = order_data['order_type']
-    
-    # Execute order via Binance API
-    result = execute_order(symbol, quantity, order_type)
+    symbol = order_data.get('symbol', config.TRADE_SYMBOL)
+    quantity = float(order_data.get('quantity', config.TRADE_QUANTITY))
+    order_type = order_data.get('order_type', 'market').lower()
+
+    result = execute_order(symbol=symbol, quantity=quantity, order_type=order_type)
     return jsonify(result)
 
 @app.route('/api/ai_predict', methods=['POST'])
 def ai_predict():
     market_data = request.json
-    # Use the AI model to make predictions based on the market data
     if ai_managed_preferences:
         prediction = ReinforcementLearning().predict(market_data)
     else:
         prediction = NeuralNetwork().predict(market_data)
-    return jsonify(prediction)
+    return jsonify({"prediction": prediction})
 
 @app.route('/api/set_preferences', methods=['POST'])
 def set_preferences():
     global ai_managed_preferences, auto_trade_enabled
-    preferences = request.json
-    ai_managed_preferences = preferences.get('ai_managed_preferences', ai_managed_preferences)
-    auto_trade_enabled = preferences.get('auto_trade_enabled', auto_trade_enabled)
-    return jsonify({"status": "Preferences updated", "ai_managed_preferences": ai_managed_preferences, "auto_trade_enabled": auto_trade_enabled})
+    prefs = request.json
+    ai_managed_preferences = prefs.get('ai_managed_preferences', ai_managed_preferences)
+    auto_trade_enabled = prefs.get('auto_trade_enabled', auto_trade_enabled)
+    return jsonify({
+        "status": "Preferences updated",
+        "ai_managed_preferences": ai_managed_preferences,
+        "auto_trade_enabled": auto_trade_enabled
+    })
 
 @app.route('/api/run_simulation', methods=['POST'])
 def run_simulation():
-    # Run simulation with the current AI strategy
     results = simulate_trading_strategy()
     return jsonify(results)
 
 @app.route('/api/emergency_stop', methods=['POST'])
 def emergency_stop():
-    # Stop all trading actions
     stop_trading()
     return jsonify({"status": "Emergency stop activated"})
 
 # ===========================
-# Trading Simulation and Stopping Logic
+# 📡 Webhook Listener
 # ===========================
+def verify_webhook_signature(request):
+    received_sig = request.headers.get('X-Signature')
+    if not received_sig:
+        return False
 
+    computed_sig = hmac.new(
+        key=config.WEBHOOK_SECRET.encode(),
+        msg=request.get_data(),
+        digestmod=hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(received_sig, computed_sig)
+
+@app.route('/webhook', methods=['POST'])
+def webhook_listener():
+    if not verify_webhook_signature(request):
+        logging.warning("🚫 Webhook signature verification failed!")
+        return jsonify({"error": "Invalid signature"}), 401
+
+    event = request.json
+    event_type = event.get('event', '')
+    status = event.get('status', '')
+
+    logging.info(f"📬 Webhook received: {event_type}, status: {status}")
+
+    if 'build' in event_type:
+        if status == 'success':
+            logging.info("✅ Build succeeded.")
+            notify_team("✅ Build succeeded on Railway.")
+        elif status == 'failed':
+            logging.error("❌ Build failed.")
+            notify_team("❌ Build failed. Check the logs.")
+    elif 'deploy' in event_type:
+        if status == 'success':
+            logging.info("🚀 Deployment succeeded.")
+            notify_team("🚀 Deployment completed successfully.")
+        elif status == 'failed':
+            logging.error("🔥 Deployment failed.")
+            notify_team("🔥 Deployment failed. Manual intervention may be needed.")
+
+    return jsonify({"status": "Webhook received"}), 200
+
+def notify_team(message):
+    logging.info(f"📣 Team Notification: {message}")
+    # Optional: Slack, Discord, email integration
+
+# ===========================
+# 📊 Simulated Trading Logic
+# ===========================
 def simulate_trading_strategy():
-    # Simulate AI strategy
     return {
         "P&L": 1500,
         "Sharpe Ratio": 1.75,
@@ -115,48 +172,37 @@ def simulate_trading_strategy():
     }
 
 def stop_trading():
-    # Logic to stop all active trades (e.g., cancel orders, stop AI trading)
-    pass
+    scheduler.pause()
+    logging.warning("🚨 Emergency stop: Scheduler paused")
 
 # ===========================
-# ⏰ Scheduled Trading Logic
+# ⏰ Background Trading Job
 # ===========================
-
-# Initialize OrderExecution for real trading logic
-order_executor = OrderExecution(binance_api_key, binance_api_secret)
-
 def run_trading_job():
     try:
-        logging.info("Running scheduled trading logic...")
-
-        data = order_executor.fetch_data()  # Use order_executor to fetch market data
-        short_sma, long_sma = order_executor.calculate_indicators(data)
-
-        if short_sma and long_sma:
-            signal = order_executor.check_trade_signal(short_sma, long_sma)
-            if signal:
-                order_executor.execute_order(signal)
-
+        logging.info("⏰ Running scheduled trading job...")
+        ticker = fetcher.fetch_ticker(config.TRADE_SYMBOL)
+        # Add AI logic if needed
     except Exception as e:
-        logging.error("Trading logic error: %s", str(e))
+        logging.error(f"Error in scheduled job: {str(e)}")
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(run_trading_job, trigger='interval', seconds=60)
 scheduler.start()
 
-# Graceful shutdown
-import atexit
 atexit.register(lambda: scheduler.shutdown())
 
 # ===========================
-# ✅ Health Check
+# 💓 Health Check Endpoint
 # ===========================
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({"status": "healthy"}), 200
 
 # ===========================
-# 🏃 Run App Locally
+# 🏁 Start App
 # ===========================
-if __name__ == "__main__":
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    logging.info("🚀 Starting Simtwo Flask App")
     app.run(debug=True)
