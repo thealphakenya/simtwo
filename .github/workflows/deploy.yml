@@ -19,13 +19,20 @@ jobs:
       with:
         node-version: '16'
 
+    # Install Railway CLI
     - name: Install Railway CLI
       run: npm install -g @railway/cli
 
+    # Login to Railway using the token stored in GitHub Secrets
+    - name: Railway Login
+      run: echo ${{ secrets.RAILWAY_TOKEN }} | railway login --token
+
+    # Link the Railway project using the project ID
     - name: Railway Link
       env:
         RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}  # Store your Railway Project ID as a secret
       run: railway link --project $RAILWAY_PROJECT_ID  # Link the project using the project ID
 
+    # Deploy to Railway
     - name: Deploy to Railway
       run: railway up
