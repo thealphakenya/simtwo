@@ -4,7 +4,8 @@ WORKDIR /app
 
 COPY . /app
 
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    for i in $(seq 1 5); do pip install --no-cache-dir -r requirements.txt && break || sleep 15; done
 
 ENV FLASK_APP=backend.app
 ENV FLASK_RUN_HOST=0.0.0.0
