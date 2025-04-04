@@ -2,13 +2,14 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-COPY . /app
+COPY requirements.txt /app/
 
 RUN pip install --upgrade pip && \
     for i in $(seq 1 5); do pip install --no-cache-dir -r requirements.txt && break || sleep 15; done
 
+COPY . /app
+
 ENV FLASK_APP=backend.app
-ENV FLASK_RUN_HOST=0.0.0.0
 ENV FLASK_ENV=production
 ENV PYTHONPATH=/app
 

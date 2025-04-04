@@ -1,3 +1,9 @@
+import sys
+import os
+
+# Add the current working directory to the Python path to make sure the backend module can be found
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
 from flask import Flask, request, jsonify
 from binance.enums import SIDE_BUY, SIDE_SELL  # Import both buy and sell options
 from backend.trading_logic.order_execution import OrderExecution  # Correct import path

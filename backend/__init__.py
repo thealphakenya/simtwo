@@ -1,8 +1,8 @@
 import os
 import sys
 
-# Ensure the parent directory is in the Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Ensure the current directory (app) is in the Python path
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-# Explicit absolute import of the `order_execution` module from `backend.trading_logic`
+# Import from trading_logic
 from backend.trading_logic import order_execution
