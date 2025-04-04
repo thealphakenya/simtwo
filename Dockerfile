@@ -1,12 +1,13 @@
-FROM python:3.9-slim
+FROM tensorflow/tensorflow:2.8.0
 
 WORKDIR /app
 
-COPY requirements.txt ./
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt /app/
 
-COPY . .
+RUN pip install --upgrade pip && \
+    pip install --default-timeout=300 --retries=10 --no-cache-dir -r requirements.txt
+
+COPY . /app
 
 ENV PYTHONPATH=/app
 
