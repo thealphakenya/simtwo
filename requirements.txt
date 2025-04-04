@@ -1,0 +1,21 @@
+# Python environment management 
+python-dotenv==0.19.2
+
+# Binance API library
+python-binance==1.0.15
+
+# Machine learning libraries
+tensorflow==2.8.0
+numpy==1.21.6  # Compatible version of numpy
+scikit-learn==0.24.2
+
+# Data manipulation
+pandas==1.3.5
+
+# Web framework
+Flask==2.2.3  # or the latest stable version of Flask
+Werkzeug==2.2.3  # Ensure you're using a compatible version of Werkzeug with Flask
+
+# Other dependencies
+requests==2.26.0
+protobuf==3.20.0
