@@ -10,26 +10,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout code
-      - name: Checkout code
-        uses: actions/checkout@v2
+      # Step 1: Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      # Set up Node.js (since you are using the Railway CLI)
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '16'
-
-      # Install Railway CLI
+      # Step 2: Install Railway CLI
       - name: Install Railway CLI
-        run: |
-          npm install -g @railway/cli
+        run: npm install -g @railway/cli
 
-      # Log in to Railway using the token stored in GitHub secrets
-      - name: Log in to Railway
+      # Step 3: Log in using Railway Token and link to project
+      - name: Link to Railway project
         run: |
-          echo ${{ secrets.RAILWAY_TOKEN }} | railway login --token
+          export RAILWAY_TOKEN=${{ secrets.RAILWAY_TOKEN }}
+          railway link
 
-      # Deploy to Railway
+      # Step 4: Deploy the project (if linked successfully)
       - name: Deploy to Railway
         run: railway up
