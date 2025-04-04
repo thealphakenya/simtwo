@@ -3,27 +3,32 @@ name: Deploy to Railway
 on:
   push:
     branches:
-      - main
+      - main  # Adjust this to your branch if necessary
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout the repository
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
-      # Step 2: Install Railway CLI
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      # Step 3: Log in using Railway Token and link to project
-      - name: Link to Railway project
+      - name: Railway login
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          export RAILWAY_TOKEN=${{ secrets.RAILWAY_TOKEN }}
-          railway link
+          echo $RAILWAY_TOKEN | railway login --token
 
-      # Step 4: Deploy the project (if linked successfully)
+      - name: Link project to Railway
+        run: |
+          railway link --project 6794a5bd-f6b0-46b2-a199-506694340d97
+
       - name: Deploy to Railway
         run: railway up
