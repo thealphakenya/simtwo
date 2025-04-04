@@ -40,4 +40,8 @@ jobs:
     # Trigger Railway deployment via Railway API (replace with your Railway API token)
     - name: Trigger Railway Deployment
       run: |
-        node script.js ${{ secrets.RAILWAY_API_TOKEN }}
+        curl -X POST https://api.railway.app/v1/your-deployment-endpoint \
+        -H "Authorization: Bearer ${{ secrets.RAILWAY_API_TOKEN }}" \
+        -H "Content-Type: application/json" \
+        -d '{"branch": "main", "image": "my-flask-app:latest"}'
+

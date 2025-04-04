@@ -1,60 +1,88 @@
-import sys
+import sys 
 import os
 import logging
+import traceback
 
-# Set up logging to STDOUT so Docker can capture it
+# ===========================
+# 📜 Logging Setup
+# ===========================
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 
-# Log current working directory
-logging.info(f"Current working directory: {os.getcwd()}")
+logging.info("🔧 Bootstrapping WSGI...")
 
-# Log sys.path to check where Python is looking for modules
-logging.info(f"Initial sys.path: {sys.path}")
-
-# Add backend directory to Python path manually
-backend_path = "/app/backend"
-if backend_path not in sys.path:
-    sys.path.append(backend_path)
-    logging.info(f"Added {backend_path} to sys.path.")
-
-# Log sys.path again after appending
-logging.info(f"Updated sys.path: {sys.path}")
-
-# Optional: list root dir to help debug Docker build structure
+# ===========================
+# 📂 Debug Filesystem & Paths
+# ===========================
 try:
-    logging.info(f"Contents of /app: {os.listdir('/app')}")
+    logging.info(f"Current working directory: {os.getcwd()}")
+    logging.info(f"Initial sys.path: {sys.path}")
+
+    # Add backend directory to Python path
+    backend_path = "/app/backend"
+    if backend_path not in sys.path:
+        sys.path.append(backend_path)
+        logging.info(f"✅ Added {backend_path} to sys.path.")
+
+    logging.info(f"Updated sys.path: {sys.path}")
+
+    # Debug directory structure
+    logging.info(f"📁 /app contents: {os.listdir('/app')}")
+    if os.path.exists(backend_path):
+        logging.info(f"📁 {backend_path} contents: {os.listdir(backend_path)}")
+    else:
+        logging.warning(f"⚠️ Directory not found: {backend_path}")
+
 except Exception as e:
-    logging.error(f"Error reading /app directory: {e}")
+    logging.error(f"❌ Filesystem/path check failed: {e}")
+    traceback.print_exc()
 
-# Optional: check /app/backend visibility
-if os.path.exists(backend_path):
-    try:
-        logging.info(f"Contents of {backend_path}: {os.listdir(backend_path)}")
-    except Exception as e:
-        logging.error(f"Error reading {backend_path}: {e}")
-else:
-    logging.warning(f"Directory does not exist: {backend_path}")
-
-# Try importing directly from backend now
+# ===========================
+# 🧪 Test Module Imports
+# ===========================
 try:
-    from trading_logic.order_execution import OrderExecution  # Just to confirm import works here too
-    logging.info("Successfully imported OrderExecution from trading_logic")
-except ModuleNotFoundError as e:
-    logging.error(f"Failed to import from trading_logic: {e}")
-    raise
+    from trading_logic.order_execution import OrderExecution
+    logging.info("✅ Successfully imported OrderExecution module.")
+except Exception as e:
+    logging.error("❌ Could not import from trading_logic:")
+    traceback.print_exc()
 
-# Import the app AFTER fixing the path
+# ===========================
+# 🚀 Import Flask App
+# ===========================
 try:
     from app import app
-    logging.info("Successfully imported app from app.py")
-except ModuleNotFoundError as e:
-    logging.error(f"Failed to import app: {e}")
-    raise
+    logging.info("✅ Successfully imported Flask app.")
+except Exception as e:
+    logging.critical("❌ Failed to import Flask app:")
+    traceback.print_exc()
 
-# Optionally run Flask app directly (usually not needed with gunicorn)
+    # Fallback Flask app to provide meaningful error if app fails to load
+    from flask import Flask, jsonify
+    fallback_app = Flask(__name__)
+
+    @fallback_app.route("/", defaults={"path": ""})
+    @fallback_app.route("/<path:path>")
+    def fallback_handler(path):
+        return jsonify({
+            "status": "error",
+            "message": "Flask app failed to load due to import error.",
+            "details": str(e),
+            "hint": "Check logs for missing files, modules, or circular imports."
+        }), 500
+
+    app = fallback_app
+
+# ===========================
+# 🧪 Local Debug Mode
+# ===========================
 if __name__ == "__main__":
-    app.run()
+    logging.info("🧪 Running app locally for debug purposes...")
+    try:
+        app.run(host="0.0.0.0", port=5000)
+    except Exception as e:
+        logging.critical("🔥 Flask failed to start:")
+        traceback.print_exc()
