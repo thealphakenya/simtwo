@@ -9,7 +9,8 @@ from binance.enums import SIDE_BUY, SIDE_SELL
 # Ensure backend directory is on the path (in case this runs standalone)
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-from trading_logic.order_execution import OrderExecution, TradingLogic  # Import both classes
+# ✅ Updated import path
+from backend.trading_logic.order_execution import OrderExecution, TradingLogic
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
