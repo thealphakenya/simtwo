@@ -18,9 +18,10 @@ COPY ./backend /app/backend
 # Expose the application's port (assuming Flask uses 5000)
 EXPOSE 5000
 
-# Set environment variable for Flask to listen on all network interfaces
-ENV FLASK_APP=app.py
+# Set environment variables for Flask to listen on all network interfaces and run in production mode
+ENV FLASK_APP=backend/app.py
 ENV FLASK_RUN_HOST=0.0.0.0
+ENV FLASK_ENV=production
 
 # Default command to start the application
 CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
