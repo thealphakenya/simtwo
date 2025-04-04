@@ -1,15 +1,15 @@
 import sys
 import os
+import logging
 
-# Add project root to sys.path
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))  # Root of the project
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'backend')))  # Add 'backend' folder
+# Log current working directory
+logging.info(f"Current working directory: {os.getcwd()}")
 
-# Log the current sys.path to verify the paths
-print("Debug: Current sys.path in wsgi.py:", sys.path)
+# Log sys.path to check where Python is looking for modules
+logging.info(f"Current sys.path: {sys.path}")
 
-# Import the Flask app instance from backend/app.py
-from app import app  # 'app' here refers to the Flask instance inside 'backend/app.py'
+# Log the contents of the /app/backend directory to check if it's correctly visible
+backend_directory = '/app/backend'
+logging.info(f"Contents of {backend_directory}: {os.listdir(backend_directory)}")
 
-if __name__ == "__main__":
-    app.run(debug=True)
+# Continue with the rest of the code...
