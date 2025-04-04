@@ -11,19 +11,29 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+    # Checkout the code from the repository
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '16.19.0'
+    # Set up Docker (optional, since the GitHub runner typically has Docker pre-installed)
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
 
-    - name: Install dependencies
-      run: npm install
+    # Log in to Railway (make sure your token is set as a secret in GitHub)
+    - name: Log in to Railway
+      run: |
+        echo ${{ secrets.RAILWAY_TOKEN }} | railway login --token
 
+    # Link your project (ensure you have the correct Railway project ID as a secret)
+    - name: Link to Railway project
+      run: railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
+
+    # Build and push the Docker image to Railway
+    - name: Build Docker image
+      run: |
+        docker build -t railway-app .
+    
+    # Deploy the Docker container to Railway
     - name: Deploy to Railway
       run: |
-        railway login --token ${{ secrets.RAILWAY_TOKEN }}
-        railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
-        railway up
+        railway up --docker
