@@ -1,4 +1,4 @@
-name: Deploy to Railway (Docker)
+name: Deploy to Railway
 
 on:
   push:
@@ -10,24 +10,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      # Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v2
 
+      # Set up Node.js (since you are using the Railway CLI)
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+
+      # Install Railway CLI
       - name: Install Railway CLI
         run: |
           npm install -g @railway/cli
 
-      - name: Log in to Railway using RAILWAY_TOKEN
+      # Log in to Railway using the token stored in GitHub secrets
+      - name: Log in to Railway
         run: |
-          echo $RAILWAY_TOKEN | railway login --token
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          echo ${{ secrets.RAILWAY_TOKEN }} | railway login --token
 
-      - name: Build and push Docker image
-        run: |
-          docker build -t registry.railway.app/simtwoproject:${{ github.sha }} .
-          docker push registry.railway.app/simtwoproject:${{ github.sha }}
-
+      # Deploy to Railway
       - name: Deploy to Railway
-        run: |
-          railway up --service=simtwoproject --detach
+        run: railway up
