@@ -3,7 +3,7 @@ name: Deploy to Railway
 on:
   push:
     branches:
-      - main  # Change to the branch you want to deploy from
+      - main
 
 jobs:
   deploy:
@@ -13,29 +13,27 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    # Set up Node.js (since the Railway CLI requires Node.js)
-    - name: Set up Node.js 16
+    # Set up Node.js (using version 16.19.0 or other stable version)
+    - name: Set up Node.js 16.19.0
       uses: actions/setup-node@v2
       with:
-        node-version: '16'
+        node-version: '16.19.0'
 
-    # Set up Railway CLI using the custom GitHub action
+    # Install Railway CLI using the custom GitHub action
     - name: Setup Railway CLI
       uses: MadeByThePinsHub/setup-railway-cli-action@v0.1.0
       with:
-        # Optional: You can specify additional settings such as npm-mode or repo-url if needed.
-        # For now, we are using the default settings
         npm-mode: false
 
-    # Login to Railway using the token stored in GitHub Secrets
+    # Login to Railway using the token
     - name: Railway Login
       run: echo ${{ secrets.RAILWAY_TOKEN }} | railway login --token
 
-    # Link the Railway project using the project ID stored in GitHub Secrets
+    # Link the Railway project
     - name: Railway Link
       env:
-        RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}  # Store your Railway Project ID as a secret
-      run: railway link --project $RAILWAY_PROJECT_ID  # Link the project using the project ID
+        RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+      run: railway link --project $RAILWAY_PROJECT_ID
 
     # Deploy to Railway
     - name: Deploy to Railway
