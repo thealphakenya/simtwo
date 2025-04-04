@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from binance.client import Client
 from ai_models.model import TradingAI, train_model, predict_trade
-from trading_logic.order_execution import execute_order
+from backend.trading_logic.order_execution import execute_order  # Correct import path
 from data.data_fetcher import get_market_data
 
 app = Flask(__name__)
