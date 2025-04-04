@@ -9,9 +9,12 @@ RUN pip install --upgrade pip && \
 
 COPY . /app
 
+ENV PYTHONPATH=/app
+
 ENV FLASK_APP=backend.app
 ENV FLASK_ENV=production
-ENV PYTHONPATH=/app
+
+RUN ls -R /app
 
 EXPOSE 5000
 
