@@ -19,3 +19,4 @@ Werkzeug==2.2.3  # Ensure you're using a compatible version of Werkzeug with Fla
 # Other dependencies
 requests==2.26.0
 protobuf==3.20.0
+gunicorn==20.1.0
