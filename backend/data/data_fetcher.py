@@ -2,17 +2,22 @@
 
 from binance.client import Client
 import pandas as pd
-from backend.config.config import config  # Importing the config object
 
 class DataFetcher:
-    def __init__(self, api_key=None, api_secret=None):
-        # Use the config values or pass in custom ones
-        self.api_key = api_key or config.API_KEY  # Use API_KEY from config
-        self.api_secret = api_secret or config.API_SECRET  # Use API_SECRET from config
+    def __init__(self, api_key=None, api_secret=None, trade_symbol=None):
+        # Use the passed API key/secret or fallback to None (it should be passed explicitly if required)
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.trade_symbol = trade_symbol  # Default trade symbol can be passed here
+        
+        # Ensure we have API keys before initializing the client
+        if not self.api_key or not self.api_secret:
+            raise ValueError("API key and secret must be provided")
+
         self.client = Client(self.api_key, self.api_secret)  # Initialize the Binance client with the API credentials
 
     def fetch_ohlcv_data(self, symbol=None, interval='1h', limit=100):
-        symbol = symbol or config.TRADE_SYMBOL  # Default symbol from config
+        symbol = symbol or self.trade_symbol  # Use the trade symbol or fallback to instance variable
         klines = self.client.get_historical_klines(symbol, interval, limit=limit)
         data = []
         for kline in klines:
@@ -27,17 +32,17 @@ class DataFetcher:
         return df
 
     def fetch_order_book(self, symbol=None):
-        symbol = symbol or config.TRADE_SYMBOL  # Default symbol from config
+        symbol = symbol or self.trade_symbol  # Use the trade symbol or fallback to instance variable
         return self.client.get_order_book(symbol=symbol)
 
     def fetch_ticker(self, symbol=None):
-        symbol = symbol or config.TRADE_SYMBOL  # Default symbol from config
+        symbol = symbol or self.trade_symbol  # Use the trade symbol or fallback to instance variable
         return self.client.get_symbol_ticker(symbol=symbol)
 
     def fetch_balance(self):
         return self.client.get_account()
 
 # ✅ Convenience wrapper for quick access in app.py
-def get_market_data(symbol=None):
-    fetcher = DataFetcher()  # Initialize using default API keys from config
-    return fetcher.fetch_ticker(symbol)
+def get_market_data(api_key, api_secret, trade_symbol=None):
+    fetcher = DataFetcher(api_key=api_key, api_secret=api_secret, trade_symbol=trade_symbol)  # Initialize using provided API keys
+    return fetcher.fetch_ticker(trade_symbol)

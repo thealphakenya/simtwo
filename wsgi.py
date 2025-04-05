@@ -10,8 +10,5 @@ backend_path = os.path.join(app_root, 'backend')
 if backend_path not in sys.path:
     sys.path.insert(0, backend_path)
 
-# ✅ Import config if needed (but it's not required here unless explicitly used in this file)
-from backend import config
-
 # 🚀 Import the Flask app from app.py
 from app import app

@@ -1,4 +1,6 @@
-import time 
+# backend/trading_logic/order_execution.py
+
+import time
 import logging
 from binance.client import Client
 from binance.enums import (
@@ -6,7 +8,6 @@ from binance.enums import (
     ORDER_TYPE_MARKET, ORDER_TYPE_LIMIT,
     TIME_IN_FORCE_GTC
 )
-from backend.config.config import config  # Importing the config object
 from ai_models import TradingAI, ReinforcementLearning, train_model  # ✅ Added AI model import
 
 # ============================
@@ -14,9 +15,12 @@ from ai_models import TradingAI, ReinforcementLearning, train_model  # ✅ Added
 # ============================
 class OrderExecution:
     def __init__(self, api_key=None, api_secret=None):
-        # Use config values or fallback to defaults if provided
-        self.api_key = api_key or config.API_KEY  # Use API_KEY from config
-        self.api_secret = api_secret or config.API_SECRET  # Use API_SECRET from config
+        # Ensure that API key and secret are provided, either explicitly or through configuration
+        if not api_key or not api_secret:
+            raise ValueError("API key and secret must be provided.")
+        
+        self.api_key = api_key
+        self.api_secret = api_secret
         self.client = Client(self.api_key, self.api_secret)  # Initialize the Binance client with the API credentials
 
     def place_market_order(self, symbol='BTCUSDT', side=SIDE_BUY, quantity=1.0):
@@ -67,6 +71,7 @@ class OrderExecution:
 # ============================
 class TradingLogic:
     def __init__(self, api_key=None, api_secret=None, symbol='BTCUSDT', short_window=50, long_window=200):
+        # Initialize with given API keys and trading parameters
         self.symbol = symbol
         self.short_window = short_window
         self.long_window = long_window
@@ -151,5 +156,9 @@ def execute_order(symbol, quantity, order_type='market', price=None, side=SIDE_B
 # 🧪 CLI Testing
 # ============================
 if __name__ == "__main__":
-    logic = TradingLogic(config.API_KEY, config.API_SECRET)
+    # Example API keys for testing (replace with actual values)
+    api_key = 'your_api_key_here'
+    api_secret = 'your_api_secret_here'
+    
+    logic = TradingLogic(api_key, api_secret)
     logic.run()

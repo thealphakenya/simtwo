@@ -1,11 +1,13 @@
-import sys
-import os
+# backend/__init__.py
 
-# Add parent to path so backend can be imported
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-# Core Imports
+# Import necessary components for trading logic and other backend operations
 from backend.trading_logic.order_execution import OrderExecution
-from backend.config import config
 
-__all__ = ["OrderExecution", "config"]
+# You can add any other necessary imports from the backend here
+
+# Optionally, you can define a list of all public-facing modules in the backend
+__all__ = [
+    "OrderExecution",
+    # Add other modules here if needed, for example:
+    # "SomeOtherModule",
+]

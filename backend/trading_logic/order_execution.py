@@ -1,3 +1,5 @@
+# backend/trading_logic/order_execution.py
+
 import time
 import logging
 from binance.client import Client
@@ -12,15 +14,13 @@ from binance.enums import (
 # ============================
 class OrderExecution:
     def __init__(self, api_key=None, api_secret=None):
-        # Use config values or fallback to defaults if provided
-        self.api_key = api_key or self.get_config().API_KEY  # Use API_KEY from config
-        self.api_secret = api_secret or self.get_config().API_SECRET  # Use API_SECRET from config
+        # Ensure that API key and secret are provided, either via config or explicitly
+        if not api_key or not api_secret:
+            raise ValueError("API key and secret must be provided.")
+        
+        self.api_key = api_key
+        self.api_secret = api_secret
         self.client = Client(self.api_key, self.api_secret)  # Initialize the Binance client with the API credentials
-
-    def get_config(self):
-        # Import config here to avoid circular imports
-        from backend.config.config import config
-        return config
 
     def place_market_order(self, symbol='BTCUSDT', side=SIDE_BUY, quantity=1.0):
         try:
@@ -154,5 +154,9 @@ def execute_order(symbol, quantity, order_type='market', price=None, side=SIDE_B
 # 🧪 CLI Testing
 # ============================
 if __name__ == "__main__":
-    logic = TradingLogic(config.API_KEY, config.API_SECRET)
+    # Replace with appropriate values for testing
+    api_key = 'your_api_key_here'
+    api_secret = 'your_api_secret_here'
+    
+    logic = TradingLogic(api_key, api_secret)
     logic.run()

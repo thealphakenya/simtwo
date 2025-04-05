@@ -7,12 +7,26 @@ from flask import Flask, request, jsonify
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.enums import SIDE_BUY, SIDE_SELL
 from binance.client import Client
+from dotenv import load_dotenv
+
+# ===========================
+# 🛠️ Inlined Config (was in config.py)
+# ===========================
+load_dotenv()
+
+class Config:
+    API_KEY = os.getenv('BINANCE_API_KEY')
+    API_SECRET = os.getenv('BINANCE_SECRET_KEY')
+    TRADE_SYMBOL = 'BTCUSDT'
+    TRADE_QUANTITY = 0.01
+    WEBHOOK_SECRET = 'd9f1a3d47f83e25f92c97a912b3ac31c45ff98c87e2e98b03d78a12a78a813f5'
+
+config = Config()
 
 # ===========================
 # 📦 Backend Module Imports
 # ===========================
-from backend.trading_logic.order_execution import OrderExecution
-from backend import config  # ✅ Explicit config import
+from backend.trading_logic.order_execution import OrderExecution, TradingLogic
 from ai_models.model import ReinforcementLearning, NeuralNetwork
 from training_logic.order_execution import execute_order
 from data.data_fetcher import DataFetcher
@@ -21,8 +35,10 @@ from data.data_fetcher import DataFetcher
 # 🔐 API Setup
 # ===========================
 client = Client(config.API_KEY, config.API_SECRET)
-fetcher = DataFetcher(config.API_KEY, config.API_SECRET)
-order_executor = OrderExecution(config.API_KEY, config.API_SECRET)
+
+# Explicitly pass the API key and secret for initialization
+fetcher = DataFetcher(api_key=config.API_KEY, api_secret=config.API_SECRET, trade_symbol=config.TRADE_SYMBOL)
+order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SECRET)
 
 # ===========================
 # 🚀 Flask App Setup

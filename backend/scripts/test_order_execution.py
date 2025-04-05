@@ -1,9 +1,14 @@
+import os
 from backend.trading_logic.order_execution import OrderExecution
 from binance.enums import SIDE_BUY  # Import necessary enums for trade actions
 
-# Initialize API keys (you should store these securely in environment variables, not hardcode them)
-api_key = "your_api_key"
-api_secret = "your_api_secret"
+# Ensure API keys are securely stored in environment variables (do not hardcode them)
+api_key = os.getenv("BINANCE_API_KEY")  # Get API key from environment variables
+api_secret = os.getenv("BINANCE_API_SECRET")  # Get API secret from environment variables
+
+# Check if API keys are available
+if not api_key or not api_secret:
+    raise ValueError("API key and secret must be set in environment variables.")
 
 # Instantiate the OrderExecution class
 order_executor = OrderExecution(api_key, api_secret)
