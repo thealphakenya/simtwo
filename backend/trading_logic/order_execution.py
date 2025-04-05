@@ -6,7 +6,6 @@ from binance.enums import (
     ORDER_TYPE_MARKET, ORDER_TYPE_LIMIT,
     TIME_IN_FORCE_GTC
 )
-from backend.config.config import config  # Importing the config object
 
 # ============================
 # 🚀 Order Execution Class
@@ -14,9 +13,14 @@ from backend.config.config import config  # Importing the config object
 class OrderExecution:
     def __init__(self, api_key=None, api_secret=None):
         # Use config values or fallback to defaults if provided
-        self.api_key = api_key or config.API_KEY  # Use API_KEY from config
-        self.api_secret = api_secret or config.API_SECRET  # Use API_SECRET from config
+        self.api_key = api_key or self.get_config().API_KEY  # Use API_KEY from config
+        self.api_secret = api_secret or self.get_config().API_SECRET  # Use API_SECRET from config
         self.client = Client(self.api_key, self.api_secret)  # Initialize the Binance client with the API credentials
+
+    def get_config(self):
+        # Import config here to avoid circular imports
+        from backend.config.config import config
+        return config
 
     def place_market_order(self, symbol='BTCUSDT', side=SIDE_BUY, quantity=1.0):
         try:
