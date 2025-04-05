@@ -19,8 +19,8 @@ if backend_path not in sys.path:
 # ===========================
 # 📦 Backend Module Imports
 # ===========================
-from ai_models.model import ReinforcementLearning, NeuralNetwork  # Import the ReinforcementLearning class
-from training_logic.order_execution import OrderExecution, execute_order  # Updated import
+from ai_models.model import ReinforcementLearning, NeuralNetwork  # ✅ Proper import added
+from training_logic.order_execution import OrderExecution, execute_order
 from data.data_fetcher import DataFetcher
 from config import config
 
@@ -114,10 +114,10 @@ def ai_predict():
     logging.debug("Predicting AI model based on market data")
     try:
         if ai_managed_preferences:
-            prediction = ReinforcementLearning().predict(market_data)  # Using ReinforcementLearning class
+            prediction = ReinforcementLearning().predict(market_data)
         else:
-            prediction = NeuralNetwork().predict(market_data)  # Fallback to NeuralNetwork class
-        return jsonify({"prediction": prediction})
+            prediction = NeuralNetwork().predict(market_data)
+        return jsonify({"prediction": prediction.tolist()})  # Ensure JSON serializable
     except Exception as e:
         logging.error("Error during AI prediction: %s", str(e))
         return jsonify({"error": "Error during AI prediction", "details": str(e)}), 500
