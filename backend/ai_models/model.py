@@ -12,7 +12,7 @@ def predict_trade(data, model):
     Predict future prices or trading signals using the trained model.
 
     :param data: Data to be used for prediction.
-    :param model: The trained TradingAI model.
+    :param model: The trained TradingAI or ReinforcementLearning model.
     :return: Predicted values.
     """
     # Assuming data is preprocessed and ready for prediction
@@ -103,4 +103,35 @@ class TradingAI:
 
         :param file_path: Path from where to load the model.
         """
+        self.model = tf.keras.models.load_model(file_path)
+
+
+# ReinforcementLearning class definition for reinforcement learning
+class ReinforcementLearning:
+    def __init__(self, model=None):
+        self.model = model if model else self.create_model()
+
+    def create_model(self):
+        model = Sequential([
+            Dense(128, input_dim=10, activation='relu'),
+            Dense(64, activation='relu'),
+            Dense(1, activation='linear')  # Assuming continuous output (for example, predicting price)
+        ])
+        model.compile(optimizer='adam', loss='mean_squared_error')
+        return model
+
+    def train(self, data, target, epochs=50, batch_size=32):
+        X_train, X_val, y_train, y_val = train_test_split(data, target, test_size=0.2, random_state=42)
+        scaler = StandardScaler()
+        X_train = scaler.fit_transform(X_train)
+        X_val = scaler.transform(X_val)
+        self.model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(X_val, y_val))
+
+    def predict(self, data):
+        return self.model.predict(data)
+
+    def save_model(self, file_path):
+        self.model.save(file_path)
+
+    def load_model(self, file_path):
         self.model = tf.keras.models.load_model(file_path)
