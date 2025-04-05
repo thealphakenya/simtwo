@@ -22,7 +22,7 @@ if backend_path not in sys.path:
 from ai_models.model import ReinforcementLearning, NeuralNetwork  # ✅ Proper import added
 from training_logic.order_execution import OrderExecution, execute_order
 from data.data_fetcher import DataFetcher
-from config import config
+from config.config import config  # ✅ Corrected import
 
 # ===========================
 # 🔐 API Setup
