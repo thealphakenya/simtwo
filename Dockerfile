@@ -15,6 +15,8 @@ COPY --from=builder /app /app
 
 RUN mv /app/backend/training_logic /app/backend/trading_logic || true
 
+COPY wsgi.py /app/
+
 ENV PYTHONPATH=/app:/app/backend
 
 RUN pip show gunicorn || echo "Gunicorn not found, installing it..." && pip install gunicorn

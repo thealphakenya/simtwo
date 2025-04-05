@@ -1,4 +1,4 @@
-import sys 
+import sys
 import os
 import logging
 import traceback
@@ -54,7 +54,7 @@ except Exception as e:
 # 🚀 Import Flask App
 # ===========================
 try:
-    from app import app
+    from app import app  # Make sure app.py exists in the root directory and contains 'app = Flask(__name__)'
     logging.info("✅ Successfully imported Flask app.")
 except Exception as e:
     logging.critical("❌ Failed to import Flask app:")
