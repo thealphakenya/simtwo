@@ -1,4 +1,3 @@
-import sys
 import os
 import logging
 import atexit
@@ -8,20 +7,6 @@ from flask import Flask, request, jsonify
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.enums import SIDE_BUY, SIDE_SELL
 from binance.client import Client
-
-# ===========================
-# 🛠 Ensure /app and /backend are in sys.path
-# ===========================
-app_root = os.path.abspath(os.path.dirname(__file__))
-if app_root not in sys.path:
-    sys.path.append(app_root)
-
-backend_path = os.path.join(app_root, 'backend')
-if backend_path not in sys.path:
-    sys.path.append(backend_path)
-
-# Log the sys.path to verify the directories
-print("Current sys.path:", sys.path)
 
 # ===========================
 # 📦 Backend Module Imports
