@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 # ✅ Core Imports for Convenience
 from backend.trading_logic.order_execution import OrderExecution
-from backend.config.config import config
+from backend.config import config
 
 # You can also expose frequently used modules or classes here if needed
 __all__ = ["OrderExecution", "config"]
