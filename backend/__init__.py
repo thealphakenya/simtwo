@@ -1,12 +1,10 @@
 import sys
 import os
 
-# Add the parent directory to the Python path so that 'backend' can be imported from other scripts
+# Add the parent directory to the path for absolute imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# ✅ Core Imports for Convenience
 from backend.trading_logic.order_execution import OrderExecution
-from backend.config import config
+from backend.config import config  # ✅ this works because of __init__.py in config
 
-# You can also expose frequently used modules or classes here if needed
 __all__ = ["OrderExecution", "config"]

@@ -12,7 +12,7 @@ from binance.client import Client
 # 📦 Backend Module Imports
 # ===========================
 from backend.trading_logic.order_execution import OrderExecution
-from backend.config.config import config  # ✅ Explicit config import
+from backend import config  # ✅ Explicit config import
 from ai_models.model import ReinforcementLearning, NeuralNetwork
 from training_logic.order_execution import execute_order
 from data.data_fetcher import DataFetcher
