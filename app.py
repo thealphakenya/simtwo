@@ -197,7 +197,30 @@ atexit.register(lambda: scheduler.shutdown())
 # ===========================
 @app.route('/health', methods=['GET'])
 def health_check():
-    return jsonify({"status": "healthy"}), 200
+    try:
+        # Check API keys, and external services
+        health_data = {
+            "status": "healthy",
+            "message": "All systems are running smoothly."
+        }
+
+        # Check Binance API connectivity
+        try:
+            client.ping()
+            health_data["binance_api"] = "Connected"
+        except Exception as e:
+            health_data["binance_api"] = f"Failed: {str(e)}"
+
+        # Check if the DataFetcher is working correctly
+        try:
+            fetcher.fetch_ticker(config.TRADE_SYMBOL)
+            health_data["data_fetcher"] = "Working"
+        except Exception as e:
+            health_data["data_fetcher"] = f"Failed: {str(e)}"
+
+        return jsonify(health_data), 200
+    except Exception as e:
+        return jsonify({"status": "unhealthy", "error": str(e)}), 500
 
 # ===========================
 # 🏁 Start App
