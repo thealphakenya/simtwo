@@ -1,15 +1,11 @@
 import sys
 import os
 
-# === ✅ Ensure /app is in Python's path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'app')))
+# Add the app root and backend to sys.path
+app_root = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, app_root)  # Ensure app root is the first in the sys.path
 
-# === ✅ Ensure /backend is also in Python's path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'backend')))
+backend_path = os.path.join(app_root, 'backend')
+sys.path.insert(0, backend_path)  # Ensure backend is included in sys.path
 
-# === ✅ Import the Flask app
-from app import app
-
-# === ✅ Run the app (only if run directly, not by Gunicorn)
-if __name__ == "__main__":
-    app.run()
+from app import app  # Import the Flask app

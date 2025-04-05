@@ -20,6 +20,9 @@ backend_path = os.path.join(app_root, 'backend')
 if backend_path not in sys.path:
     sys.path.append(backend_path)
 
+# Log the sys.path to verify the directories
+print("Current sys.path:", sys.path)
+
 # ===========================
 # 📦 Backend Module Imports
 # ===========================
