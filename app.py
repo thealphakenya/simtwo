@@ -1,4 +1,4 @@
-import sys
+import sys 
 import os
 import logging
 import atexit
@@ -205,4 +205,5 @@ def health_check():
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     logging.info("🚀 Starting Simtwo Flask App")
-    app.run(debug=True)
+    # Ensure Flask listens on all interfaces (0.0.0.0) when deployed
+    app.run(host='0.0.0.0', port=5000, debug=True)

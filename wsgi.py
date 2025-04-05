@@ -54,7 +54,7 @@ except Exception as e:
 # 🚀 Import Flask App
 # ===========================
 try:
-    from app import app  # Make sure app.py exists in the root directory and contains 'app = Flask(__name__)'
+    from app import app  # Ensure app.py exists in the root directory and contains 'app = Flask(__name__)'
     logging.info("✅ Successfully imported Flask app.")
 except Exception as e:
     logging.critical("❌ Failed to import Flask app:")
@@ -82,7 +82,7 @@ except Exception as e:
 if __name__ == "__main__":
     logging.info("🧪 Running app locally for debug purposes...")
     try:
-        app.run(host="0.0.0.0", port=5000)
+        app.run(host="0.0.0.0", port=5000, debug=True)  # Ensure debugging and proper binding
     except Exception as e:
         logging.critical("🔥 Flask failed to start:")
         traceback.print_exc()

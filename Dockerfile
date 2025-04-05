@@ -19,7 +19,7 @@ COPY wsgi.py /app/
 
 ENV PYTHONPATH=/app:/app/backend
 
-RUN pip show gunicorn || echo "Gunicorn not found, installing it..." && pip install gunicorn
+RUN pip show gunicorn || (echo "Gunicorn not found, installing it..." && pip install gunicorn)
 
 EXPOSE 5000
 
@@ -28,6 +28,6 @@ ENV BINANCE_API_KEY=your_binance_api_key
 ENV BINANCE_SECRET_KEY=your_binance_api_secret
 
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD curl --silent --fail http://localhost:5000/health || exit 1
+  CMD curl --silent --fail http://localhost:5000/health || (echo "Healthcheck failed at $(date)" && exit 1)
 
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "wsgi:app"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "--log-level", "debug", "wsgi:app"]

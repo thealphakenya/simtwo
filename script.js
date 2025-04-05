@@ -1,11 +1,10 @@
-// script.js
-
 const https = require('https');
 
 const TOKEN = process.argv[2];
-const ENVIRONMENT_ID = "42d75714-c415-4a9f-ad1c-373141c3eac0"; // replace
-const SERVICE_ID = "705a3574-eaee-44d8-9dac-187f7524a6ad"; // replace
+const ENVIRONMENT_ID = "42d75714-c415-4a9f-ad1c-373141c3eac0"; // replace with your actual environment ID
+const SERVICE_ID = "705a3574-eaee-44d8-9dac-187f7524a6ad"; // replace with your actual service ID
 
+// GraphQL mutation to trigger redeploy
 const data = JSON.stringify({
   query: `
     mutation ServiceInstanceRedeploy {
@@ -34,19 +33,24 @@ const req = https.request(options, res => {
     body += chunk;
   });
   res.on('end', () => {
-    const response = JSON.parse(body);
-    if (response.errors) {
-      console.error('❌ Deployment failed:', response.errors);
-      process.exit(1);
-    } else {
-      console.log('✅ Railway deployment triggered:', response.data);
+    try {
+      const response = JSON.parse(body);
+      if (response.errors) {
+        console.error('❌ Deployment failed:', response.errors);
+        process.exit(1); // exit with failure code
+      } else {
+        console.log('✅ Railway deployment triggered successfully:', response.data);
+      }
+    } catch (err) {
+      console.error('❌ Failed to parse the response:', err);
+      process.exit(1); // exit with failure code
     }
   });
 });
 
 req.on('error', error => {
   console.error('❌ Request error:', error);
-  process.exit(1);
+  process.exit(1); // exit with failure code
 });
 
 req.write(data);
