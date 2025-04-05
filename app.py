@@ -20,7 +20,7 @@ if backend_path not in sys.path:
 # 📦 Backend Module Imports
 # ===========================
 from ai_models.model import ReinforcementLearning, NeuralNetwork
-from trading_logic.order_execution import OrderExecution, execute_order
+from training_logic.order_execution import OrderExecution, execute_order  # Updated import
 from data.data_fetcher import DataFetcher
 from config import config
 
