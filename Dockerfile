@@ -1,16 +1,3 @@
-# Use Python 3.8 slim image as the base image for the build stage
-FROM python:3.8-slim AS builder
-
-# Set the working directory inside the container
-WORKDIR /app
-
-# Copy only the requirements file to cache dependencies
-COPY requirements.txt ./
-
-# Upgrade pip and install dependencies
-RUN pip install --upgrade pip && \
-    pip install --default-timeout=300 --retries=10 --no-cache-dir -r requirements.txt
-
 # Use a base image with TensorFlow for the production stage
 FROM tensorflow/tensorflow:2.8.0
 
@@ -25,6 +12,9 @@ RUN mv /app/backend/training_logic /app/backend/trading_logic || true
 
 # Set the PYTHONPATH to include your app directory and backend directory
 ENV PYTHONPATH=/app:/app/backend
+
+# Install Gunicorn explicitly in case it's missing
+RUN pip show gunicorn || echo "Gunicorn not found, installing it..." && pip install gunicorn
 
 # Expose port 5000 for the Flask application
 EXPOSE 5000
