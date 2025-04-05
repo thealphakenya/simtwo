@@ -7,13 +7,15 @@ from flask import Flask, request, jsonify
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.enums import SIDE_BUY, SIDE_SELL
 from binance.client import Client
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
+# load_dotenv()  # This line is not needed if you're using Railway's environment variables
+
+# Setup logging for debugging
+logging.basicConfig(level=logging.DEBUG)
 
 # ===========================
-# 🛠️ Inlined Config (was in config.py)
+# 📦 Configuration
 # ===========================
-load_dotenv()
-
 class Config:
     API_KEY = os.getenv('BINANCE_API_KEY')
     API_SECRET = os.getenv('BINANCE_SECRET_KEY')
@@ -22,6 +24,15 @@ class Config:
     WEBHOOK_SECRET = 'd9f1a3d47f83e25f92c97a912b3ac31c45ff98c87e2e98b03d78a12a78a813f5'
 
 config = Config()
+
+# Log API keys to verify if they're loaded correctly
+API_KEY = os.getenv('BINANCE_API_KEY')
+API_SECRET = os.getenv('BINANCE_SECRET_KEY')
+
+if not API_KEY or not API_SECRET:
+    logging.error("API Key or Secret is missing!")
+else:
+    logging.debug(f"API Key: {API_KEY}, API Secret: {API_SECRET}")
 
 # ===========================
 # 📦 Backend Module Imports
@@ -34,7 +45,11 @@ from data.data_fetcher import DataFetcher
 # ===========================
 # 🔐 API Setup
 # ===========================
-client = Client(config.API_KEY, config.API_SECRET)
+try:
+    client = Client(config.API_KEY, config.API_SECRET)
+except Exception as e:
+    logging.error(f"Error initializing Binance Client: {str(e)}")
+    raise
 
 # Explicitly pass the API key and secret for initialization
 fetcher = DataFetcher(api_key=config.API_KEY, api_secret=config.API_SECRET, trade_symbol=config.TRADE_SYMBOL)
@@ -54,7 +69,6 @@ auto_trade_enabled = False
 # ===========================
 # 🔁 API Routes
 # ===========================
-
 @app.route('/')
 def home():
     logging.debug("Handling home route request")
