@@ -1,4 +1,4 @@
-import time
+import time 
 import logging
 from binance.client import Client
 from binance.enums import (
@@ -7,6 +7,7 @@ from binance.enums import (
     TIME_IN_FORCE_GTC
 )
 from backend.config.config import config  # Importing the config object
+from ai_models import TradingAI, ReinforcementLearning, train_model  # ✅ Added AI model import
 
 # ============================
 # 🚀 Order Execution Class
