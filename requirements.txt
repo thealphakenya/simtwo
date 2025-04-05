@@ -32,3 +32,4 @@ scipy==1.10.1
 six==1.17.0
 werkzeug==2.2.2  # Add this line to ensure compatibility with Flask 2.x
 python-binance==1.0.15
+scikit-learn==1.0.2
