@@ -6,24 +6,17 @@ from binance.enums import (
     ORDER_TYPE_MARKET, ORDER_TYPE_LIMIT,
     TIME_IN_FORCE_GTC
 )
-
-# ============================
-# 🔐 Load API Credentials
-# ============================
-try:
-    from config import config
-    API_KEY = config.API_KEY
-    API_SECRET = config.API_SECRET
-except ImportError:
-    API_KEY = 'your_api_key'
-    API_SECRET = 'your_api_secret'
+from backend.config.config import config  # Importing the config object
 
 # ============================
 # 🚀 Order Execution Class
 # ============================
 class OrderExecution:
-    def __init__(self, api_key, api_secret):
-        self.client = Client(api_key, api_secret)
+    def __init__(self, api_key=None, api_secret=None):
+        # Use config values or fallback to defaults if provided
+        self.api_key = api_key or config.API_KEY  # Use API_KEY from config
+        self.api_secret = api_secret or config.API_SECRET  # Use API_SECRET from config
+        self.client = Client(self.api_key, self.api_secret)  # Initialize the Binance client with the API credentials
 
     def place_market_order(self, symbol='BTCUSDT', side=SIDE_BUY, quantity=1.0):
         try:
@@ -72,7 +65,7 @@ class OrderExecution:
 # 📈 Optional: Trading Strategy
 # ============================
 class TradingLogic:
-    def __init__(self, api_key, api_secret, symbol='BTCUSDT', short_window=50, long_window=200):
+    def __init__(self, api_key=None, api_secret=None, symbol='BTCUSDT', short_window=50, long_window=200):
         self.symbol = symbol
         self.short_window = short_window
         self.long_window = long_window
@@ -138,7 +131,7 @@ class TradingLogic:
 # ============================
 # 🧩 App-Compatible Entry
 # ============================
-def execute_order(symbol, quantity, order_type='market', price=None, side=SIDE_BUY, api_key=API_KEY, api_secret=API_SECRET):
+def execute_order(symbol, quantity, order_type='market', price=None, side=SIDE_BUY, api_key=None, api_secret=None):
     """
     Standalone function for app.py to place market or limit orders.
     """
@@ -157,5 +150,5 @@ def execute_order(symbol, quantity, order_type='market', price=None, side=SIDE_B
 # 🧪 CLI Testing
 # ============================
 if __name__ == "__main__":
-    logic = TradingLogic(API_KEY, API_SECRET)
+    logic = TradingLogic(config.API_KEY, config.API_SECRET)
     logic.run()

@@ -4,10 +4,10 @@ WORKDIR /app
 
 COPY . /app/
 
-RUN mkdir -p /app/backend
-
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
+
+RUN mkdir -p /app/backend
 
 EXPOSE 5000
 
