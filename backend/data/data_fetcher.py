@@ -2,7 +2,7 @@
 
 from binance.client import Client
 import pandas as pd
-from config import config
+from backend.config.config import config
 
 class DataFetcher:
     def __init__(self, api_key, api_secret):

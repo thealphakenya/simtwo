@@ -10,19 +10,23 @@ from binance.enums import SIDE_BUY, SIDE_SELL
 from binance.client import Client
 
 # ===========================
-# 🔧 Add /backend to sys.path
+# 🛠 Ensure /app and /backend are in sys.path
 # ===========================
-backend_path = os.path.join(os.path.dirname(__file__), 'backend')
+app_root = os.path.abspath(os.path.dirname(__file__))
+if app_root not in sys.path:
+    sys.path.append(app_root)
+
+backend_path = os.path.join(app_root, 'backend')
 if backend_path not in sys.path:
     sys.path.append(backend_path)
 
 # ===========================
 # 📦 Backend Module Imports
 # ===========================
-from ai_models.model import ReinforcementLearning, NeuralNetwork  # ✅ Proper import added
+from ai_models.model import ReinforcementLearning, NeuralNetwork
 from training_logic.order_execution import OrderExecution, execute_order
 from data.data_fetcher import DataFetcher
-from config.config import config  # ✅ Corrected import
+from backend.config.config import config  # ✅ Corrected import
 
 # ===========================
 # 🔐 API Setup
@@ -117,7 +121,7 @@ def ai_predict():
             prediction = ReinforcementLearning().predict(market_data)
         else:
             prediction = NeuralNetwork().predict(market_data)
-        return jsonify({"prediction": prediction.tolist()})  # Ensure JSON serializable
+        return jsonify({"prediction": prediction.tolist()})
     except Exception as e:
         logging.error("Error during AI prediction: %s", str(e))
         return jsonify({"error": "Error during AI prediction", "details": str(e)}), 500

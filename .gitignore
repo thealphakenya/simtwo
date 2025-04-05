@@ -1,25 +1,12 @@
-# Ignore .env file for security reasons
 .env
-
-# Ignore Python bytecode files
 *.pyc
 *.pyo
 *.pyd
 __pycache__/
-
-# Ignore virtual environment directories
 venv/
 env/
-
-# Ignore logs
 *.log
-
-# Ignore config.py to prevent tracking of sensitive API keys and secrets
 config.py
-
-# Ignore Jupyter Notebook checkpoints
 .ipynb_checkpoints/
-
-# Ignore IDE settings and project files
 .vscode/
 .idea/

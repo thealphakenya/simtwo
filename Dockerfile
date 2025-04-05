@@ -4,8 +4,11 @@ WORKDIR /app
 
 COPY . /app/
 
-RUN pip install --no-cache-dir -r requirements.txt
-
 RUN mkdir -p /app/backend
 
-CMD ["gunicorn", "wsgi:app", "--bind", "0.0.0.0:5000"]
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+EXPOSE 5000
+
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "wsgi:app"]
