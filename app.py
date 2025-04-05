@@ -1,4 +1,4 @@
-import sys 
+import sys
 import os
 import logging
 import atexit
@@ -48,27 +48,50 @@ auto_trade_enabled = False
 
 @app.route('/')
 def home():
+    logging.debug("Handling home route request")
     return jsonify({"message": "Welcome to Simtwo Trading API"}), 200
 
 @app.route('/api/market_data', methods=['GET'])
 def get_market_data_api():
-    data = fetcher.fetch_ticker(config.TRADE_SYMBOL)
-    return jsonify(data)
+    logging.debug("Fetching market data for %s", config.TRADE_SYMBOL)
+    try:
+        data = fetcher.fetch_ticker(config.TRADE_SYMBOL)
+        return jsonify(data)
+    except Exception as e:
+        logging.error("Error fetching market data: %s", str(e))
+        return jsonify({"error": "Error fetching market data", "details": str(e)}), 500
 
 @app.route('/api/order_book', methods=['GET'])
 def order_book():
     symbol = request.args.get('symbol', config.TRADE_SYMBOL)
-    return jsonify(fetcher.fetch_order_book(symbol))
+    logging.debug("Fetching order book for symbol: %s", symbol)
+    try:
+        order_data = fetcher.fetch_order_book(symbol)
+        return jsonify(order_data)
+    except Exception as e:
+        logging.error("Error fetching order book: %s", str(e))
+        return jsonify({"error": "Error fetching order book", "details": str(e)}), 500
 
 @app.route('/api/ohlcv', methods=['GET'])
 def ohlcv():
     symbol = request.args.get('symbol', config.TRADE_SYMBOL)
-    df = fetcher.fetch_ohlcv_data(symbol)
-    return df.to_json(orient='records')
+    logging.debug("Fetching OHLCV data for symbol: %s", symbol)
+    try:
+        df = fetcher.fetch_ohlcv_data(symbol)
+        return df.to_json(orient='records')
+    except Exception as e:
+        logging.error("Error fetching OHLCV data: %s", str(e))
+        return jsonify({"error": "Error fetching OHLCV data", "details": str(e)}), 500
 
 @app.route('/api/balance', methods=['GET'])
 def balance():
-    return jsonify(fetcher.fetch_balance())
+    logging.debug("Fetching account balance")
+    try:
+        balance_data = fetcher.fetch_balance()
+        return jsonify(balance_data)
+    except Exception as e:
+        logging.error("Error fetching balance: %s", str(e))
+        return jsonify({"error": "Error fetching balance", "details": str(e)}), 500
 
 @app.route('/api/place_order', methods=['POST'])
 def place_order():
@@ -77,17 +100,27 @@ def place_order():
     quantity = float(order_data.get('quantity', config.TRADE_QUANTITY))
     order_type = order_data.get('order_type', 'market').lower()
 
-    result = execute_order(symbol=symbol, quantity=quantity, order_type=order_type)
-    return jsonify(result)
+    logging.debug("Placing order: symbol=%s, quantity=%f, order_type=%s", symbol, quantity, order_type)
+    try:
+        result = execute_order(symbol=symbol, quantity=quantity, order_type=order_type)
+        return jsonify(result)
+    except Exception as e:
+        logging.error("Error placing order: %s", str(e))
+        return jsonify({"error": "Error placing order", "details": str(e)}), 500
 
 @app.route('/api/ai_predict', methods=['POST'])
 def ai_predict():
     market_data = request.json
-    if ai_managed_preferences:
-        prediction = ReinforcementLearning().predict(market_data)
-    else:
-        prediction = NeuralNetwork().predict(market_data)
-    return jsonify({"prediction": prediction})
+    logging.debug("Predicting AI model based on market data")
+    try:
+        if ai_managed_preferences:
+            prediction = ReinforcementLearning().predict(market_data)
+        else:
+            prediction = NeuralNetwork().predict(market_data)
+        return jsonify({"prediction": prediction})
+    except Exception as e:
+        logging.error("Error during AI prediction: %s", str(e))
+        return jsonify({"error": "Error during AI prediction", "details": str(e)}), 500
 
 @app.route('/api/set_preferences', methods=['POST'])
 def set_preferences():
@@ -95,6 +128,7 @@ def set_preferences():
     prefs = request.json
     ai_managed_preferences = prefs.get('ai_managed_preferences', ai_managed_preferences)
     auto_trade_enabled = prefs.get('auto_trade_enabled', auto_trade_enabled)
+    logging.debug("Updated preferences: ai_managed_preferences=%s, auto_trade_enabled=%s", ai_managed_preferences, auto_trade_enabled)
     return jsonify({
         "status": "Preferences updated",
         "ai_managed_preferences": ai_managed_preferences,
@@ -103,11 +137,17 @@ def set_preferences():
 
 @app.route('/api/run_simulation', methods=['POST'])
 def run_simulation():
-    results = simulate_trading_strategy()
-    return jsonify(results)
+    logging.debug("Running simulation")
+    try:
+        results = simulate_trading_strategy()
+        return jsonify(results)
+    except Exception as e:
+        logging.error("Error running simulation: %s", str(e))
+        return jsonify({"error": "Error running simulation", "details": str(e)}), 500
 
 @app.route('/api/emergency_stop', methods=['POST'])
 def emergency_stop():
+    logging.warning("Emergency stop activated")
     stop_trading()
     return jsonify({"status": "Emergency stop activated"})
 
@@ -117,6 +157,7 @@ def emergency_stop():
 def verify_webhook_signature(request):
     received_sig = request.headers.get('X-Signature')
     if not received_sig:
+        logging.warning("🚫 Webhook signature missing!")
         return False
 
     computed_sig = hmac.new(
@@ -125,12 +166,14 @@ def verify_webhook_signature(request):
         digestmod=hashlib.sha256
     ).hexdigest()
 
-    return hmac.compare_digest(received_sig, computed_sig)
+    if not hmac.compare_digest(received_sig, computed_sig):
+        logging.warning("🚫 Webhook signature mismatch!")
+        return False
+    return True
 
 @app.route('/webhook', methods=['POST'])
 def webhook_listener():
     if not verify_webhook_signature(request):
-        logging.warning("🚫 Webhook signature verification failed!")
         return jsonify({"error": "Invalid signature"}), 401
 
     event = request.json
@@ -158,12 +201,12 @@ def webhook_listener():
 
 def notify_team(message):
     logging.info(f"📣 Team Notification: {message}")
-    # Optional: Slack, Discord, email integration
 
 # ===========================
 # 📊 Simulated Trading Logic
 # ===========================
 def simulate_trading_strategy():
+    logging.debug("Simulating trading strategy")
     return {
         "P&L": 1500,
         "Sharpe Ratio": 1.75,
@@ -179,12 +222,12 @@ def stop_trading():
 # ⏰ Background Trading Job
 # ===========================
 def run_trading_job():
+    logging.info("⏰ Running scheduled trading job...")
     try:
-        logging.info("⏰ Running scheduled trading job...")
         ticker = fetcher.fetch_ticker(config.TRADE_SYMBOL)
-        # Add AI logic if needed
+        logging.debug("Ticker data: %s", ticker)
     except Exception as e:
-        logging.error(f"Error in scheduled job: {str(e)}")
+        logging.error("Error in scheduled trading job: %s", str(e))
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(run_trading_job, trigger='interval', seconds=60)
@@ -197,36 +240,36 @@ atexit.register(lambda: scheduler.shutdown())
 # ===========================
 @app.route('/health', methods=['GET'])
 def health_check():
+    logging.debug("Health check initiated.")
     try:
-        # Check API keys, and external services
         health_data = {
             "status": "healthy",
             "message": "All systems are running smoothly."
         }
 
-        # Check Binance API connectivity
         try:
             client.ping()
             health_data["binance_api"] = "Connected"
         except Exception as e:
             health_data["binance_api"] = f"Failed: {str(e)}"
+            logging.error("Error with Binance API: %s", str(e))
 
-        # Check if the DataFetcher is working correctly
         try:
             fetcher.fetch_ticker(config.TRADE_SYMBOL)
             health_data["data_fetcher"] = "Working"
         except Exception as e:
             health_data["data_fetcher"] = f"Failed: {str(e)}"
+            logging.error("Error with DataFetcher: %s", str(e))
 
         return jsonify(health_data), 200
     except Exception as e:
+        logging.error("Health check failed: %s", str(e))
         return jsonify({"status": "unhealthy", "error": str(e)}), 500
 
 # ===========================
 # 🏁 Start App
 # ===========================
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     logging.info("🚀 Starting Simtwo Flask App")
-    # Ensure Flask listens on all interfaces (0.0.0.0) when deployed
     app.run(host='0.0.0.0', port=5000, debug=True)
