@@ -9,6 +9,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 RUN mkdir -p /app/backend
 
+RUN mkdir -p /app/frontend
+COPY ./frontend /app/frontend/
+
 EXPOSE 5000
 
 CMD ["gunicorn", "-c", "gunicorn.conf.py", "wsgi:app"]

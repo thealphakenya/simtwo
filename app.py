@@ -3,12 +3,10 @@ import logging
 import atexit
 import hmac
 import hashlib
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.enums import SIDE_BUY, SIDE_SELL
 from binance.client import Client
-# from dotenv import load_dotenv
-# load_dotenv()  # This line is not needed if you're using Railway's environment variables
 
 # Setup logging for debugging
 logging.basicConfig(level=logging.DEBUG)
@@ -58,7 +56,7 @@ order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SE
 # ===========================
 # 🚀 Flask App Setup
 # ===========================
-app = Flask(__name__)
+app = Flask(__name__, static_folder='frontend', static_url_path='/frontend')
 
 # ===========================
 # ⚙️ Global State
@@ -72,7 +70,11 @@ auto_trade_enabled = False
 @app.route('/')
 def home():
     logging.debug("Handling home route request")
-    return jsonify({"message": "Welcome to Simtwo Trading API"}), 200
+    return send_from_directory('frontend', 'index.html')
+
+@app.route('/frontend/<path:path>')
+def serve_frontend(path):
+    return send_from_directory('frontend', path)
 
 @app.route('/api/market_data', methods=['GET'])
 def get_market_data_api():
