@@ -4,7 +4,6 @@ import atexit
 import hmac
 import hashlib
 from flask import Flask, request, jsonify, send_from_directory
-from flask_socketio import SocketIO
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.enums import SIDE_BUY, SIDE_SELL
 from binance.client import Client
@@ -50,6 +49,7 @@ except Exception as e:
     logging.error(f"Error initializing Binance Client: {str(e)}")
     raise
 
+# Explicitly pass the API key and secret for initialization
 fetcher = DataFetcher(api_key=config.API_KEY, api_secret=config.API_SECRET, trade_symbol=config.TRADE_SYMBOL)
 order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SECRET)
 
@@ -57,7 +57,12 @@ order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SE
 # 🚀 Flask App Setup
 # ===========================
 app = Flask(__name__, static_folder='frontend', static_url_path='/frontend')
-socketio = SocketIO(app)
+
+# ===========================
+# ⚙️ Global State
+# ===========================
+ai_managed_preferences = True
+auto_trade_enabled = False
 
 # ===========================
 # 🔁 API Routes
@@ -291,5 +296,5 @@ def health_check():
 # ===========================
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    logging.info("🚀 Starting Flask App")
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    logging.info("🚀 Starting Simtwo Flask App")
+    app.run(host='0.0.0.0', port=5000, debug=True)
