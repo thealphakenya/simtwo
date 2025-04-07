@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.client import Client
 import numpy as np
+from tensorflow.keras.layers import Input  # Import Input layer from Keras
 
 # ===========================
 # 📦 AI Trading Integration
