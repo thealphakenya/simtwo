@@ -1,119 +1,140 @@
-document.addEventListener("DOMContentLoaded", async () => {
-    const loadingScreen = document.getElementById("loading-screen");
-    const mainContent = document.getElementById("main-content");
-    const currentPriceEl = document.getElementById("current-price");
-    const chartCanvas = document.getElementById("chart-canvas");
-    const aiStatus = document.getElementById("ai-status");
+document.addEventListener('DOMContentLoaded', function () {
+    const socket = io.connect('http://localhost:5000');  // Connect to the backend socket
+    const currentSymbol = document.getElementById('current-symbol');
+    const currentPrice = document.getElementById('current-price');
+    const currentTradingPair = document.getElementById('current-trading-pair');
+    const tradingChart = document.getElementById('chart-canvas');
+    const aiStatus = document.getElementById('ai-status');
+    const orderType = document.getElementById('order-type');
+    const orderAmount = document.getElementById('order-amount');
+    const placeBuyOrderBtn = document.getElementById('place-buy-order');
+    const placeSellOrderBtn = document.getElementById('place-sell-order');
+    const chatInput = document.getElementById('chat-input');
+    const emergencyStopBtn = document.getElementById('emergency-stop-btn');
+    const aiChatSection = document.getElementById('chatwithai');
 
-    let chart;
-
-    // Utility: Fetch market price
-    async function fetchPrice() {
-        try {
-            const response = await fetch("/api/market_data");
-            const data = await response.json();
-            const price = parseFloat(data.price).toFixed(2);
-            currentPriceEl.textContent = `$${price}`;
-        } catch (err) {
-            currentPriceEl.textContent = "Error";
-            console.error("Market data fetch error:", err);
-        }
-    }
-
-    // Utility: Fetch AI signal
-    async function fetchAISignal() {
-        try {
-            const response = await fetch("/api/ai/signal");
-            const data = await response.json();
-            const signal = data.action.toUpperCase();
-            aiStatus.textContent = `AI: ${signal}`;
-            aiStatus.classList.remove("bg-green-100", "bg-yellow-100", "bg-red-100");
-
-            switch (signal) {
-                case "BUY":
-                    aiStatus.classList.add("bg-green-100", "text-green-800");
-                    break;
-                case "SELL":
-                    aiStatus.classList.add("bg-red-100", "text-red-800");
-                    break;
-                default:
-                    aiStatus.classList.add("bg-yellow-100", "text-yellow-800");
-            }
-        } catch (err) {
-            aiStatus.textContent = "AI: ERROR";
-            console.error("AI signal fetch error:", err);
-        }
-    }
-
-    // Utility: Render dummy chart for now
-    function renderChart() {
-        chart = new Chart(chartCanvas, {
-            type: "line",
-            data: {
-                labels: Array.from({ length: 60 }, (_, i) => i),
-                datasets: [{
-                    label: "Price",
-                    data: Array.from({ length: 60 }, () => 50000 + Math.random() * 500),
-                    borderColor: "#3B82F6",
-                    backgroundColor: "rgba(59, 130, 246, 0.1)",
-                    tension: 0.4,
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                animation: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    x: { display: false },
-                    y: { ticks: { callback: value => `$${value}` } }
+    // Initialize the trading chart (using Chart.js)
+    let chart = new Chart(tradingChart, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Price',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                data: []
+            }]
+        },
+        options: {
+            scales: {
+                x: {
+                    type: 'linear',
+                    position: 'bottom'
                 }
             }
-        });
+        }
+    });
+
+    // Listen for AI status changes from the backend (AI Active or Inactive)
+    socket.on('ai_status', function (status) {
+        aiStatus.innerText = status === 'active' ? 'AI Active' : 'AI Inactive';
+    });
+
+    // Listen for the most recent trading pair
+    socket.on('current_pair', function (pair) {
+        currentTradingPair.innerText = pair;
+        currentSymbol.innerText = pair;
+        updateChart(pair);
+    });
+
+    // Update chart data when the market data changes
+    function updateChart(pair) {
+        fetch(`/api/market_data`)
+            .then(response => response.json())
+            .then(data => {
+                const prices = data.prices;  // Assuming prices is an array of [timestamp, price]
+                const labels = prices.map(item => item[0]);
+                const priceData = prices.map(item => item[1]);
+
+                chart.data.labels = labels;
+                chart.data.datasets[0].data = priceData;
+                chart.update();
+            })
+            .catch(err => console.error("Error fetching market data:", err));
     }
 
-    // Event: Buy/Sell Button Click
-    document.getElementById("place-buy-order").addEventListener("click", () => {
-        const amount = document.getElementById("order-amount").value;
-        console.log(`Placing BUY order for ${amount}`);
-        alert(`🔼 BUY order placed for ${amount}`);
-        // Optional: POST to your backend to trigger order
-    });
-
-    document.getElementById("place-sell-order").addEventListener("click", () => {
-        const amount = document.getElementById("order-amount").value;
-        console.log(`Placing SELL order for ${amount}`);
-        alert(`🔽 SELL order placed for ${amount}`);
-        // Optional: POST to your backend to trigger order
-    });
-
-    // Event: Emergency Stop
-    document.getElementById("emergency-stop-btn").addEventListener("click", () => {
-        console.warn("🛑 EMERGENCY STOP triggered!");
-        alert("🛑 Emergency stop activated! All trading halted.");
-        // Optional: POST to backend to disable trading
-    });
-
-    // Load & display
-    await fetchPrice();
-    await fetchAISignal();
-    renderChart();
-
-    // Hide loading screen after init
-    loadingScreen.classList.add("hidden");
-    mainContent.classList.remove("hidden");
-
-    // Refresh every 10 seconds
-    setInterval(() => {
-        fetchPrice();
-        fetchAISignal();
-        if (chart) {
-            const newPrice = 50000 + Math.random() * 500;
-            chart.data.datasets[0].data.shift();
-            chart.data.datasets[0].data.push(newPrice);
-            chart.update();
+    // Place a buy order
+    placeBuyOrderBtn.addEventListener('click', function () {
+        const amount = orderAmount.value;
+        if (amount <= 0) {
+            alert('Please enter a valid order amount');
+            return;
         }
-    }, 10000);
+
+        const orderDetails = {
+            type: orderType.value,
+            action: 'buy',
+            amount: amount
+        };
+
+        socket.emit('place_order', orderDetails);
+    });
+
+    // Place a sell order
+    placeSellOrderBtn.addEventListener('click', function () {
+        const amount = orderAmount.value;
+        if (amount <= 0) {
+            alert('Please enter a valid order amount');
+            return;
+        }
+
+        const orderDetails = {
+            type: orderType.value,
+            action: 'sell',
+            amount: amount
+        };
+
+        socket.emit('place_order', orderDetails);
+    });
+
+    // Emergency stop button to halt trading
+    emergencyStopBtn.addEventListener('click', function () {
+        socket.emit('emergency_stop', { message: 'Stop Trading' });
+    });
+
+    // Chat with AI functionality
+    const chatForm = document.getElementById('chat-form');
+    const chatBox = document.getElementById('chat-box');
+
+    chatForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const message = chatInput.value;
+        if (message.trim() === '') {
+            return;
+        }
+
+        socket.emit('chat_message', { message: message });
+
+        // Display the message in the chat box
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('chat-message');
+        messageElement.innerText = `You: ${message}`;
+        chatBox.appendChild(messageElement);
+
+        chatInput.value = '';  // Clear chat input field
+    });
+
+    // Listen for AI's response in chat
+    socket.on('ai_response', function (response) {
+        const responseElement = document.createElement('div');
+        responseElement.classList.add('chat-message');
+        responseElement.innerText = `AI: ${response}`;
+        chatBox.appendChild(responseElement);
+    });
+
+    // Periodically request AI status (this can be a more sophisticated request, e.g., on certain events)
+    setInterval(function () {
+        socket.emit('get_ai_status');
+    }, 5000);
 });

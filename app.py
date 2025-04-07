@@ -13,7 +13,7 @@ from tensorflow.keras.layers import Input  # Import Input layer from Keras
 # ===========================
 # 📦 AI Trading Integration
 # ===========================
-from ai_trading import TradingAI
+from backend.ai_models import TradingAI
 
 # ===========================
 # 📦 Configuration

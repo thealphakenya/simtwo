@@ -1,22 +1,84 @@
-# .gitignore
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+}
 
-# Python bytecode
-*.pyc
-*.pyo
-*.pyd
-__pycache__
+#container {
+    width: 80%;
+    margin: auto;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
 
-# Virtual environment
-venv/
-env/
+#trading-info h1 {
+    text-align: center;
+}
 
-# API keys and sensitive data
-config.py
+#current-symbol, #current-price, #current-trading-pair {
+    font-size: 1.2rem;
+    margin: 10px 0;
+}
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints/
+#chart-canvas {
+    width: 100%;
+    height: 300px;
+    background-color: #ffffff;
+}
 
-# IDE settings
-.vscode/
-.idea/
-.env
+#order-section {
+    margin-top: 20px;
+    text-align: center;
+}
+
+#order-section select, #order-section input {
+    padding: 10px;
+    margin: 10px;
+    font-size: 1rem;
+}
+
+#order-section button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+#emergency-stop {
+    margin-top: 20px;
+    text-align: center;
+}
+
+#emergency-stop-btn {
+    padding: 10px 20px;
+    font-size: 1rem;
+    background-color: red;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+#chatwithai {
+    margin-top: 30px;
+}
+
+#chat-box {
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #f1f1f1;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+#chat-form input {
+    width: 80%;
+    padding: 10px;
+    font-size: 1rem;
+}
+
+#chat-form button {
+    padding: 10px;
+    font-size: 1rem;
+    cursor: pointer;
+}
