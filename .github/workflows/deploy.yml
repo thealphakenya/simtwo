@@ -11,42 +11,37 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      # Checkout the code from the repository
-      - name: Checkout code
-        uses: actions/checkout@v4
+    # Checkout the code from the repository
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      # Set up Docker Buildx (for building multi-platform images)
-      - name: Set up Docker
-        uses: docker/setup-buildx-action@v2
+    # Set up Docker Buildx (for building multi-platform images)
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v2
 
-      # Build Docker image from the Dockerfile
-      - name: Build Docker image
-        run: docker build -t my-flask-app:latest .
+    # Build Docker image from the Dockerfile
+    - name: Build Docker image
+      run: |
+        docker build -t my-flask-app:latest .
 
-      # Log in to Docker registry (Docker Hub or your custom registry)
-      - name: Log in to Docker registry
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+    # Log in to Docker registry (Docker Hub or your custom registry)
+    - name: Log in to Docker registry
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Tag the image and push to Docker registry
-      - name: Push Docker image to registry
-        run: |
-          docker tag my-flask-app:latest ${{ secrets.DOCKER_USERNAME }}/my-flask-app:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/my-flask-app:latest
+    # Tag the image and push to Docker registry (Docker Hub or your custom registry)
+    - name: Push Docker image to registry
+      run: |
+        docker tag my-flask-app:latest ${{ secrets.DOCKER_USERNAME }}/my-flask-app:latest
+        docker push ${{ secrets.DOCKER_USERNAME }}/my-flask-app:latest
 
-      # Trigger Railway deployment via the Railway API
-      - name: Trigger Railway Deployment
-        run: |
-          curl -X POST "https://backboard.railway.app/graphql/v2" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.RAILWAY_API_TOKEN }}" \
-            -d '{
-              "query": "mutation RedeployService($input: ServiceInstanceRedeployInput!) { serviceInstanceRedeploy(input: $input) }",
-              "variables": {
-                "input": {
-                  "serviceInstanceId": "ee4bdd61-21d2-4bde-bba4-4be716d1ed9d"
-                }
-              }
-            }'
+    # Trigger Railway deployment via Railway API (replace with your Railway API token)
+    - name: Trigger Railway Deployment
+      run: |
+        curl -X POST https://api.railway.app/v1/your-deployment-endpoint \
+        -H "Authorization: Bearer ${{ secrets.RAILWAY_API_TOKEN }}" \
+        -H "Content-Type: application/json" \
+        -d '{"branch": "main", "image": "my-flask-app:latest"}'
+
