@@ -1,79 +1,88 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html> 
+<html lang="en" class="h-full">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simtwo Trading Dashboard</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="js/app.js" defer></script> <!-- Linking the updated app.js -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimTwo Trading Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.0.0/dist/socket.io.min.js"></script>
+    <script src="js/app.js" defer></script>
 </head>
-<body>
-  <header>
-    <h1>Simtwo Trading Dashboard</h1>
-    <nav>
-      <ul>
-        <li><a href="#home">Home</a></li>
-        <li><a href="#strategy-settings">Strategy Settings</a></li>
-        <li><a href="#backtesting">Backtesting</a></li>
-      </ul>
-    </nav>
-  </header>
+<body class="h-full bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div id="app" class="h-full flex flex-col">
+        <!-- Loading screen -->
+        <div id="loading-screen" class="fixed inset-0 bg-white dark:bg-gray-900 z-50 flex items-center justify-center">
+            <div class="advanced-loader">
+                <div class="loader-circle"></div>
+                <div class="loader-text">Initializing Trading Platform</div>
+            </div>
+        </div>
 
-  <main>
-    <!-- Live Market Data Section -->
-    <section id="market-data">
-      <h2>Live Market Feed</h2>
-      <div id="chart-container"></div>
-    </section>
+        <!-- Main app content (loaded after initialization) -->
+        <div id="main-content" class="hidden h-full">
+            <div class="flex justify-between items-center mb-6">
+                <h1 class="text-2xl font-bold dark:text-white">Trading Interface</h1>
+                <div class="flex items-center space-x-2">
+                    <span id="account-type-badge" class="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        Virtual Account
+                    </span>
+                    <span id="ai-status" class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        AI Active
+                    </span>
+                </div>
+            </div>
 
-    <!-- Strategy Settings Section -->
-    <section id="strategy-settings">
-      <h2>AI Strategy Settings</h2>
-      <form>
-        <label for="algorithm-type">Select AI Algorithm:</label>
-        <select id="algorithm-type">
-          <option value="reinforcement-learning">Reinforcement Learning</option>
-          <option value="neural-network">Neural Network</option>
-          <option value="decision-tree">Decision Tree</option>
-        </select>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Trading Chart Section -->
+                <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold dark:text-white">
+                            <span id="current-symbol">BTC/USDT</span>
+                            <span id="current-price" class="ml-2 text-lg font-bold price-animation">$50,234.56</span>
+                        </h2>
+                        <div class="timeframe-selector flex space-x-2">
+                            <button class="timeframe-btn active">1H</button>
+                            <button class="timeframe-btn">4H</button>
+                            <button class="timeframe-btn">1D</button>
+                        </div>
+                    </div>
+                    <div id="trading-chart" class="h-96 relative">
+                        <canvas id="chart-canvas"></canvas>
+                    </div>
+                </div>
 
-        <label for="risk-management">Enable Risk Management:</label>
-        <input type="checkbox" id="risk-management">
+                <!-- Order Panel Section -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 order-panel">
+                    <h2 class="text-xl font-semibold mb-4 dark:text-white">Place Order</h2>
+                    <div class="space-y-4">
+                        <div class="form-group">
+                            <label class="block text-sm font-medium mb-1 dark:text-gray-300">Order Type</label>
+                            <select id="order-type" class="form-select">
+                                <option>Market</option>
+                                <option>Limit</option>
+                                <option>Stop-Loss</option>
+                            </select>
+                        </div>
 
-        <label for="simtwo-ai-managed">Use Simtwo AI Managed Preferences:</label>
-        <input type="checkbox" id="simtwo-ai-managed" checked>
+                        <div class="form-group">
+                            <label class="block text-sm font-medium mb-1 dark:text-gray-300">Amount</label>
+                            <input type="number" id="order-amount" class="form-input" placeholder="0.00">
+                        </div>
 
-        <label for="auto-trade">Enable Auto Trade:</label>
-        <input type="checkbox" id="auto-trade">
-      </form>
-    </section>
+                        <div class="flex space-x-3">
+                            <button id="place-buy-order" class="btn-buy flex-1">Buy</button>
+                            <button id="place-sell-order" class="btn-sell flex-1">Sell</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    <!-- Real-Time Simulation Section -->
-    <section id="backtesting">
-      <h2>Run AI Strategies in Real-Time</h2>
-      <button id="run-simulation-btn">Run Simulation</button>
-      <div id="simulation-results"></div>
-    </section>
-
-    <!-- Emergency Stop Section -->
-    <section>
-      <button id="emergency-stop-btn" class="emergency-stop">Emergency Stop</button>
-    </section>
-
-    <!-- Performance Metrics Section -->
-    <section>
-      <h3>Performance Metrics</h3>
-      <div id="performance-metrics">
-        <p>P&L: $1500</p>
-        <p>Sharpe Ratio: 1.75</p>
-        <p>Win Rate: 65%</p>
-        <p>Max Drawdown: -10%</p>
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <p>&copy; 2025 Simtwo AI Trading System</p>
-  </footer>
+    <!-- Emergency Stop Button -->
+    <div class="absolute bottom-10 left-10">
+        <button id="emergency-stop-btn" class="bg-red-500 text-white py-2 px-4 rounded-md">Emergency Stop</button>
+    </div>
 </body>
 </html>

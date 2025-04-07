@@ -1,0 +1,112 @@
+/* Advanced Loader Animations */
+.advanced-loader {
+    text-align: center;
+}
+
+.loader-circle {
+    width: 50px;
+    height: 50px;
+    margin: 0 auto 20px;
+    border: 5px solid rgba(66, 153, 225, 0.2);
+    border-radius: 50%;
+    border-top-color: #4299e1;
+    animation: spin 1s linear infinite;
+}
+
+.dark .loader-circle {
+    border-top-color: #63b3ed;
+}
+
+.loader-text {
+    font-size: 1rem;
+    color: #4a5568;
+    animation: pulse 2s infinite;
+}
+
+.dark .loader-text {
+    color: #cbd5e0;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Trading Chart Loader */
+.chart-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(255,255,255,0) 0%,
+        rgba(66,153,225,0.1) 50%,
+        rgba(255,255,255,0) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    z-index: 10;
+}
+
+.dark .chart-loading-overlay {
+    background: linear-gradient(
+        90deg,
+        rgba(26,32,44,0) 0%,
+        rgba(99,179,237,0.1) 50%,
+        rgba(26,32,44,0) 100%
+    );
+}
+
+/* Button Loading States */
+.btn-loading .btn-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+.btn-buy .btn-loading .btn-spinner {
+    border-top-color: white;
+}
+
+.btn-sell .btn-loading .btn-spinner {
+    border-top-color: white;
+}
+
+/* Price Animation */
+.price-animation {
+    transition: color 0.3s ease;
+}
+
+/* Order Execution Animation */
+.order-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    transform: translateX(100%);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 100;
+}
+
+.order-notification.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.order-notification.success {
+    border-left: 4px solid #48bb78;
+}
+
+.order-notification.error {
+    border-left: 4px solid #f56565;
+}
+
+.order-notification.processing {
+    border-left: 4px solid #4299e1;
+}

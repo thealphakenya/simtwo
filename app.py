@@ -3,14 +3,16 @@ import logging
 import atexit
 import hmac
 import hashlib
-from flask import Flask, request, jsonify, send_from_directory
-from flask_socketio import SocketIO
+from fastapi import FastAPI, Request, HTTPException
+from pydantic import BaseModel
 from apscheduler.schedulers.background import BackgroundScheduler
-from binance.enums import SIDE_BUY, SIDE_SELL
 from binance.client import Client
+import numpy as np
 
-# Setup logging for debugging
-logging.basicConfig(level=logging.DEBUG)
+# ===========================
+# 📦 AI Trading Integration
+# ===========================
+from ai_trading import TradingAI
 
 # ===========================
 # 📦 Configuration
@@ -24,9 +26,10 @@ class Config:
 
 config = Config()
 
-# Log API keys to verify if they're loaded correctly
-API_KEY = os.getenv('BINANCE_API_KEY')
-API_SECRET = os.getenv('BINANCE_SECRET_KEY')
+# Setup logging
+logging.basicConfig(level=logging.DEBUG)
+API_KEY = config.API_KEY
+API_SECRET = config.API_SECRET
 
 if not API_KEY or not API_SECRET:
     logging.error("API Key or Secret is missing!")
@@ -37,7 +40,6 @@ else:
 # 📦 Backend Module Imports
 # ===========================
 from backend.trading_logic.order_execution import OrderExecution, TradingLogic
-from ai_models.model import ReinforcementLearning, NeuralNetwork
 from training_logic.order_execution import execute_order
 from data.data_fetcher import DataFetcher
 
@@ -52,124 +54,46 @@ except Exception as e:
 
 fetcher = DataFetcher(api_key=config.API_KEY, api_secret=config.API_SECRET, trade_symbol=config.TRADE_SYMBOL)
 order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SECRET)
+ai_trader = TradingAI()
 
 # ===========================
-# 🚀 Flask App Setup
+# 🚀 FastAPI Setup
 # ===========================
-app = Flask(__name__, static_folder='frontend', static_url_path='/frontend')
-socketio = SocketIO(app)
+app = FastAPI()
 
 # ===========================
-# 🔁 API Routes
+# 🚀 API Routes
 # ===========================
-@app.route('/')
-def home():
-    logging.debug("Handling home route request")
-    return send_from_directory('frontend', 'index.html')
-
-@app.route('/frontend/<path:path>')
-def serve_frontend(path):
-    return send_from_directory('frontend', path)
-
-@app.route('/api/market_data', methods=['GET'])
-def get_market_data_api():
+@app.get("/api/market_data")
+async def get_market_data_api():
     logging.debug("Fetching market data for %s", config.TRADE_SYMBOL)
     try:
         data = fetcher.fetch_ticker(config.TRADE_SYMBOL)
-        return jsonify(data)
+        return data
     except Exception as e:
         logging.error("Error fetching market data: %s", str(e))
-        return jsonify({"error": "Error fetching market data", "details": str(e)}), 500
+        raise HTTPException(status_code=500, detail="Error fetching market data")
 
-@app.route('/api/order_book', methods=['GET'])
-def order_book():
-    symbol = request.args.get('symbol', config.TRADE_SYMBOL)
-    logging.debug("Fetching order book for symbol: %s", symbol)
-    try:
-        order_data = fetcher.fetch_order_book(symbol)
-        return jsonify(order_data)
-    except Exception as e:
-        logging.error("Error fetching order book: %s", str(e))
-        return jsonify({"error": "Error fetching order book", "details": str(e)}), 500
-
-@app.route('/api/ohlcv', methods=['GET'])
-def ohlcv():
-    symbol = request.args.get('symbol', config.TRADE_SYMBOL)
-    logging.debug("Fetching OHLCV data for symbol: %s", symbol)
-    try:
-        df = fetcher.fetch_ohlcv_data(symbol)
-        return df.to_json(orient='records')
-    except Exception as e:
-        logging.error("Error fetching OHLCV data: %s", str(e))
-        return jsonify({"error": "Error fetching OHLCV data", "details": str(e)}), 500
-
-@app.route('/api/balance', methods=['GET'])
-def balance():
+@app.get("/api/balance")
+async def balance():
     logging.debug("Fetching account balance")
     try:
         balance_data = fetcher.fetch_balance()
-        return jsonify(balance_data)
+        return balance_data
     except Exception as e:
         logging.error("Error fetching balance: %s", str(e))
-        return jsonify({"error": "Error fetching balance", "details": str(e)}), 500
+        raise HTTPException(status_code=500, detail="Error fetching balance")
 
-@app.route('/api/place_order', methods=['POST'])
-def place_order():
-    order_data = request.json
-    symbol = order_data.get('symbol', config.TRADE_SYMBOL)
-    quantity = float(order_data.get('quantity', config.TRADE_QUANTITY))
-    order_type = order_data.get('order_type', 'market').lower()
-
-    logging.debug("Placing order: symbol=%s, quantity=%f, order_type=%s", symbol, quantity, order_type)
+@app.get("/api/ai/signal")
+async def ai_signal():
     try:
-        result = execute_order(symbol=symbol, quantity=quantity, order_type=order_type)
-        return jsonify(result)
+        market_data = fetcher.fetch_ohlcv_array(window=60)  # Ensure this returns a (60, 5) array
+        market_data = np.expand_dims(market_data, axis=0)  # Add batch dimension
+        action = ai_trader.predict_action(market_data)
+        return {"action": action}
     except Exception as e:
-        logging.error("Error placing order: %s", str(e))
-        return jsonify({"error": "Error placing order", "details": str(e)}), 500
-
-@app.route('/api/ai_predict', methods=['POST'])
-def ai_predict():
-    market_data = request.json
-    logging.debug("Predicting AI model based on market data")
-    try:
-        if ai_managed_preferences:
-            prediction = ReinforcementLearning().predict(market_data)
-        else:
-            prediction = NeuralNetwork().predict(market_data)
-        return jsonify({"prediction": prediction.tolist()})
-    except Exception as e:
-        logging.error("Error during AI prediction: %s", str(e))
-        return jsonify({"error": "Error during AI prediction", "details": str(e)}), 500
-
-@app.route('/api/set_preferences', methods=['POST'])
-def set_preferences():
-    global ai_managed_preferences, auto_trade_enabled
-    prefs = request.json
-    ai_managed_preferences = prefs.get('ai_managed_preferences', ai_managed_preferences)
-    auto_trade_enabled = prefs.get('auto_trade_enabled', auto_trade_enabled)
-    logging.debug("Updated preferences: ai_managed_preferences=%s, auto_trade_enabled=%s", ai_managed_preferences, auto_trade_enabled)
-    return jsonify({
-        "status": "Preferences updated",
-        "ai_managed_preferences": ai_managed_preferences,
-        "auto_trade_enabled": auto_trade_enabled
-    })
-
-@app.route('/api/run_simulation', methods=['POST'])
-def run_simulation():
-    logging.debug("Running simulation")
-    try:
-        results = simulate_trading_strategy()
-        return jsonify(results)
-    except Exception as e:
-        logging.error("Error running simulation: %s", str(e))
-        return jsonify({"error": "Error running simulation", "details": str(e)}), 500
-
-@app.route('/api/emergency_stop', methods=['POST'])
-def emergency_stop():
-    logging.warning("Emergency stop activated")
-    stop_trading()
-    return jsonify({"status": "Emergency stop activated"})
+        logging.error("Error getting AI prediction: %s", str(e))
+        raise HTTPException(status_code=500, detail="AI prediction error")
 
 # ===========================
 # 📡 Webhook Listener
@@ -182,7 +106,7 @@ def verify_webhook_signature(request):
 
     computed_sig = hmac.new(
         key=config.WEBHOOK_SECRET.encode(),
-        msg=request.get_data(),
+        msg=request.body,
         digestmod=hashlib.sha256
     ).hexdigest()
 
@@ -191,12 +115,12 @@ def verify_webhook_signature(request):
         return False
     return True
 
-@app.route('/webhook', methods=['POST'])
-def webhook_listener():
+@app.post("/webhook")
+async def webhook_listener(request: Request):
     if not verify_webhook_signature(request):
-        return jsonify({"error": "Invalid signature"}), 401
+        raise HTTPException(status_code=401, detail="Invalid signature")
 
-    event = request.json
+    event = await request.json()
     event_type = event.get('event', '')
     status = event.get('status', '')
 
@@ -217,26 +141,10 @@ def webhook_listener():
             logging.error("🔥 Deployment failed.")
             notify_team("🔥 Deployment failed. Manual intervention may be needed.")
 
-    return jsonify({"status": "Webhook received"}), 200
+    return {"status": "Webhook received"}
 
 def notify_team(message):
     logging.info(f"📣 Team Notification: {message}")
-
-# ===========================
-# 📊 Simulated Trading Logic
-# ===========================
-def simulate_trading_strategy():
-    logging.debug("Simulating trading strategy")
-    return {
-        "P&L": 1500,
-        "Sharpe Ratio": 1.75,
-        "Win Rate": 65,
-        "Max Drawdown": -10
-    }
-
-def stop_trading():
-    scheduler.pause()
-    logging.warning("🚨 Emergency stop: Scheduler paused")
 
 # ===========================
 # ⏰ Background Trading Job
@@ -244,22 +152,32 @@ def stop_trading():
 def run_trading_job():
     logging.info("⏰ Running scheduled trading job...")
     try:
-        ticker = fetcher.fetch_ticker(config.TRADE_SYMBOL)
-        logging.debug("Ticker data: %s", ticker)
+        market_data = fetcher.fetch_ohlcv_array(window=60)
+        market_data = np.expand_dims(market_data, axis=0)
+        ai_action = ai_trader.predict_action(market_data)
+        logging.info(f"📊 AI Action: {ai_action}")
+
+        if ai_action == "buy" or ai_action == "sell":
+            balance = fetcher.fetch_balance()["available"]
+            position_size = ai_trader.calculate_position_size(balance)
+            execute_order(symbol=config.TRADE_SYMBOL, side=ai_action, quantity=position_size)
+            logging.info(f"✅ Executed {ai_action.upper()} for {position_size} {config.TRADE_SYMBOL}")
+        else:
+            logging.info("🤖 AI suggested to hold. No action taken.")
+
     except Exception as e:
         logging.error("Error in scheduled trading job: %s", str(e))
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(run_trading_job, trigger='interval', seconds=60)
 scheduler.start()
-
 atexit.register(lambda: scheduler.shutdown())
 
 # ===========================
 # 💓 Health Check Endpoint
 # ===========================
-@app.route('/health', methods=['GET'])
-def health_check():
+@app.get("/health")
+async def health_check():
     logging.debug("Health check initiated.")
     try:
         health_data = {
@@ -281,15 +199,15 @@ def health_check():
             health_data["data_fetcher"] = f"Failed: {str(e)}"
             logging.error("Error with DataFetcher: %s", str(e))
 
-        return jsonify(health_data), 200
+        return health_data
     except Exception as e:
         logging.error("Health check failed: %s", str(e))
-        return jsonify({"status": "unhealthy", "error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 # ===========================
 # 🏁 Start App
 # ===========================
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    logging.info("🚀 Starting Flask App")
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    import uvicorn
+    logging.info("🚀 Starting FastAPI App")
+    uvicorn.run(app, host="0.0.0.0", port=5000, debug=True)
