@@ -1,140 +1,133 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const socket = io.connect('http://localhost:5000');  // Connect to the backend socket
-    const currentSymbol = document.getElementById('current-symbol');
-    const currentPrice = document.getElementById('current-price');
-    const currentTradingPair = document.getElementById('current-trading-pair');
-    const tradingChart = document.getElementById('chart-canvas');
-    const aiStatus = document.getElementById('ai-status');
-    const orderType = document.getElementById('order-type');
-    const orderAmount = document.getElementById('order-amount');
-    const placeBuyOrderBtn = document.getElementById('place-buy-order');
-    const placeSellOrderBtn = document.getElementById('place-sell-order');
-    const chatInput = document.getElementById('chat-input');
-    const emergencyStopBtn = document.getElementById('emergency-stop-btn');
-    const aiChatSection = document.getElementById('chatwithai');
+import logging
+import os
+import time
+import requests
+import psutil
+import asyncio
+from flask import Flask, jsonify, render_template
+from flask_socketio import SocketIO
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from binance.client import Client
 
-    // Initialize the trading chart (using Chart.js)
-    let chart = new Chart(tradingChart, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: 'Price',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                data: []
-            }]
-        },
-        options: {
-            scales: {
-                x: {
-                    type: 'linear',
-                    position: 'bottom'
-                }
-            }
-        }
-    });
+# Set up logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-    // Listen for AI status changes from the backend (AI Active or Inactive)
-    socket.on('ai_status', function (status) {
-        aiStatus.innerText = status === 'active' ? 'AI Active' : 'AI Inactive';
-    });
+# Initialize Flask app and SocketIO
+app = Flask(__name__)
+socketio = SocketIO(app)
 
-    // Listen for the most recent trading pair
-    socket.on('current_pair', function (pair) {
-        currentTradingPair.innerText = pair;
-        currentSymbol.innerText = pair;
-        updateChart(pair);
-    });
+# API Key and Secret for Binance
+api_key = '3WohOdIVubUyXpqgkLvyNnOMzDwu2rX6jOpp2x53U39bL9gfDIVaTUSIUFIebOoC'
+api_secret = 'EOhCwX57bCVqGhThezazN0frWBAPGBN9elIcBH8Ejk91uqPieCBUnYh0dVPdysoA'
+binance_client = Client(api_key, api_secret)
 
-    // Update chart data when the market data changes
-    function updateChart(pair) {
-        fetch(`/api/market_data`)
-            .then(response => response.json())
-            .then(data => {
-                const prices = data.prices;  // Assuming prices is an array of [timestamp, price]
-                const labels = prices.map(item => item[0]);
-                const priceData = prices.map(item => item[1]);
+# Trading pair and market data
+current_pair = "BTCUSDT"
 
-                chart.data.labels = labels;
-                chart.data.datasets[0].data = priceData;
-                chart.update();
-            })
-            .catch(err => console.error("Error fetching market data:", err));
-    }
+# Initialize Scheduler for background tasks
+scheduler = BackgroundScheduler()
+scheduler.start()
 
-    // Place a buy order
-    placeBuyOrderBtn.addEventListener('click', function () {
-        const amount = orderAmount.value;
-        if (amount <= 0) {
-            alert('Please enter a valid order amount');
-            return;
-        }
+# Monitor system resources
+def monitor_resources():
+    cpu_usage = psutil.cpu_percent(interval=1)
+    memory_info = psutil.virtual_memory()
+    logger.info("CPU Usage: %s%%", cpu_usage)
+    logger.info("Memory Usage: %s%% (Available: %s MB)", memory_info.percent, memory_info.available / (1024 * 1024))
 
-        const orderDetails = {
-            type: orderType.value,
-            action: 'buy',
-            amount: amount
-        };
+# Fetch market data
+def fetch_market_data():
+    try:
+        logger.debug("Fetching market data for pair: %s", current_pair)
+        avg_price = binance_client.get_avg_price(symbol=current_pair)
+        price = avg_price['price']
+        logger.debug("Fetched price: %s", price)
+        return price
+    except Exception as e:
+        logger.error("Failed to fetch market data: %s", e, exc_info=True)
+        return None
 
-        socket.emit('place_order', orderDetails);
-    });
+# Periodic job to fetch market data
+@scheduler.scheduled_job(IntervalTrigger(seconds=60))
+def update_market_data():
+    price = fetch_market_data()
+    if price:
+        socketio.emit('market_data', {'price': price})
 
-    // Place a sell order
-    placeSellOrderBtn.addEventListener('click', function () {
-        const amount = orderAmount.value;
-        if (amount <= 0) {
-            alert('Please enter a valid order amount');
-            return;
-        }
+# Web route to serve market data
+@app.route('/api/market_data', methods=['GET'])
+def market_data():
+    try:
+        price = fetch_market_data()
+        if price:
+            return jsonify({'prices': [[time.time(), float(price)]]}), 200
+        else:
+            return jsonify({'error': 'Failed to fetch market data'}), 500
+    except Exception as e:
+        logger.error("Error fetching market data: %s", e, exc_info=True)
+        return jsonify({'error': 'Internal Server Error'}), 500
 
-        const orderDetails = {
-            type: orderType.value,
-            action: 'sell',
-            amount: amount
-        };
+# WebSocket events
+@socketio.on('place_order')
+def handle_place_order(data):
+    try:
+        logger.debug("Placing order: %s", data)
+        # Add order placement logic here (buy/sell)
+        socketio.emit('order_status', {'status': 'Order placed successfully'})
+    except Exception as e:
+        logger.error("Error placing order: %s", e, exc_info=True)
+        socketio.emit('order_status', {'status': 'Error placing order'})
 
-        socket.emit('place_order', orderDetails);
-    });
+@socketio.on('emergency_stop')
+def handle_emergency_stop(data):
+    try:
+        logger.info("Emergency stop triggered: %s", data)
+        # Handle emergency stop logic (e.g., stop trading)
+        socketio.emit('emergency_stop_status', {'status': 'Trading stopped'})
+    except Exception as e:
+        logger.error("Error during emergency stop: %s", e, exc_info=True)
+        socketio.emit('emergency_stop_status', {'status': 'Error stopping trading'})
 
-    // Emergency stop button to halt trading
-    emergencyStopBtn.addEventListener('click', function () {
-        socket.emit('emergency_stop', { message: 'Stop Trading' });
-    });
+@socketio.on('chat_message')
+def handle_chat_message(data):
+    try:
+        message = data.get('message')
+        logger.info("Received chat message: %s", message)
+        # Simulate AI response (this could be more complex, e.g., using GPT-3 or similar)
+        response = f"AI: {message[::-1]}"  # Simple reversal of the message for demo purposes
+        socketio.emit('ai_response', response)
+    except Exception as e:
+        logger.error("Error handling chat message: %s", e, exc_info=True)
+        socketio.emit('ai_response', "Error handling your message")
 
-    // Chat with AI functionality
-    const chatForm = document.getElementById('chat-form');
-    const chatBox = document.getElementById('chat-box');
+@socketio.on('get_ai_status')
+def handle_ai_status():
+    try:
+        logger.debug("Fetching AI status...")
+        # Here you could query the AI model's current status
+        ai_status = 'active'  # For demo purposes, we assume the AI is always active
+        socketio.emit('ai_status', ai_status)
+    except Exception as e:
+        logger.error("Error fetching AI status: %s", e, exc_info=True)
+        socketio.emit('ai_status', 'inactive')
 
-    chatForm.addEventListener('submit', function (e) {
-        e.preventDefault();
+# Frontend route to serve HTML
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-        const message = chatInput.value;
-        if (message.trim() === '') {
-            return;
-        }
+# Error handling (for unexpected crashes)
+@app.errorhandler(Exception)
+def handle_error(error):
+    logger.error("Unexpected error occurred: %s", error, exc_info=True)
+    return jsonify({'error': 'An unexpected error occurred'}), 500
 
-        socket.emit('chat_message', { message: message });
-
-        // Display the message in the chat box
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('chat-message');
-        messageElement.innerText = `You: ${message}`;
-        chatBox.appendChild(messageElement);
-
-        chatInput.value = '';  // Clear chat input field
-    });
-
-    // Listen for AI's response in chat
-    socket.on('ai_response', function (response) {
-        const responseElement = document.createElement('div');
-        responseElement.classList.add('chat-message');
-        responseElement.innerText = `AI: ${response}`;
-        chatBox.appendChild(responseElement);
-    });
-
-    // Periodically request AI status (this can be a more sophisticated request, e.g., on certain events)
-    setInterval(function () {
-        socket.emit('get_ai_status');
-    }, 5000);
-});
+if __name__ == '__main__':
+    logger.info("Starting Flask app...")
+    try:
+        monitor_resources()  # Initial resource monitoring
+        socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    except Exception as e:
+        logger.error("Error starting Flask app: %s", e, exc_info=True)
