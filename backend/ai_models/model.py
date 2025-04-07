@@ -91,3 +91,63 @@ class TradingAI:
         :param file_path: Path from where to load the model.
         """
         self.model = tf.keras.models.load_model(file_path)
+
+
+# ReinforcementLearning class for RL model creation, training, and prediction
+class ReinforcementLearning:
+    def __init__(self, model=None):
+        """
+        Initialize the ReinforcementLearning object. If no model is provided, a new one will be created.
+        """
+        self.model = model if model else self.create_model()
+
+    def create_model(self):
+        """
+        Create a simple neural network model for reinforcement learning.
+        :return: A compiled Keras model.
+        """
+        model = Sequential([
+            Input(shape=(10,)),  # Using Input layer instead of input_shape
+            Dense(128, activation='relu'),
+            Dense(64, activation='relu'),
+            Dense(1, activation='linear')  # Regression output for decision-making in trading
+        ])
+        model.compile(optimizer='adam', loss='mean_squared_error')
+        return model
+
+    def train(self, data, target, epochs=50, batch_size=32):
+        """
+        Train the model using historical market data.
+        :param data: Input features for training (X).
+        :param target: Target values for training (y).
+        :param epochs: Number of epochs for training.
+        :param batch_size: Batch size for training.
+        """
+        X_train, X_val, y_train, y_val = train_test_split(data, target, test_size=0.2, random_state=42)
+        # Scaling the data for better performance
+        scaler = StandardScaler()
+        X_train = scaler.fit_transform(X_train)
+        X_val = scaler.transform(X_val)
+        self.model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(X_val, y_val))
+
+    def predict(self, data):
+        """
+        Make predictions using the trained model.
+        :param data: Data for which predictions are to be made.
+        :return: Model's predictions.
+        """
+        return self.model.predict(data)
+
+    def save_model(self, file_path):
+        """
+        Save the trained model to a file.
+        :param file_path: Path to save the model.
+        """
+        self.model.save(file_path)
+
+    def load_model(self, file_path):
+        """
+        Load a saved model from a file.
+        :param file_path: Path from where to load the model.
+        """
+        self.model = tf.keras.models.load_model(file_path)
