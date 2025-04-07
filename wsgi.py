@@ -11,8 +11,8 @@ backend_path = os.path.join(app_root, 'backend')
 if backend_path not in sys.path:
     sys.path.insert(0, backend_path)
 
-# 🚀 Import the Flask app from app.py
-from app import app
+# 🚀 Import the FastAPI app from app.py
+from app import app  # Ensure that `app` is the FastAPI instance in `app.py`
 
 # To run the app with Gunicorn, the `app` variable from the `app.py` is used.
 # Gunicorn will look for `app` when starting the server, so ensure it's referenced correctly.
