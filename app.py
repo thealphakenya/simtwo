@@ -3,7 +3,15 @@ import logging
 import atexit
 import hmac
 import hashlib
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
+from flask_socketio import SocketIO
+import logging
+
+app = Flask(__name__)
+socketio = SocketIO(app)
+
+ai_managed_preferences = "default"
+virtual_account = True  # This should ideally be per-user in a real app
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.enums import SIDE_BUY, SIDE_SELL
 from binance.client import Client
