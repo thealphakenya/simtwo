@@ -1,45 +1,54 @@
-flask_socketio
+# Core Frameworks
+fastapi
+uvicorn
 flask
+flask_socketio
 gunicorn
+
+# ML & Data Science
 tensorflow
+numpy
 pandas
-requests
-APScheduler
-websockets
-protobuf
+scikit-learn
+scipy
+keras
+Keras-Preprocessing
+joblib
+h5py
+
+# AI/TF dependencies
 absl-py
 astunparse
-certifi
-charset-normalizer
-click
 flatbuffers
 gast
 google-pasta
 grpcio
-h5py
-idna
-importlib-metadata
+libclang
+opt-einsum
+protobuf
+six
+
+# Binance & Trading
+python-binance
+websockets
+requests
+APScheduler
+
+# FastAPI Extras
+python-multipart
+python-dotenv
+
+# Flask dependencies
+click
 itsdangerous
 jinja2
-joblib
-keras
-Keras-Preprocessing
-libclang
 MarkupSafe
-opt-einsum
+werkzeug
+
+# Utilities
 python-dateutil
 pytz
-scipy
-six
-werkzeug
-python-binance
-scikit-learn
-python-dotenv
-fastapi==0.95.2
-uvicorn==0.22.0
-tensorflow==2.12.0
-python-binance==1.0.19
-websockets==11.0.3
-numpy==1.24.3
-pandas==2.0.2
-python-multipart==0.0.6
+idna
+certifi
+charset-normalizer
+importlib-metadata
