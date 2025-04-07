@@ -1,1 +1,1 @@
-from .model import TradingAI, ReinforcementLearning, NeuralNetwork, train_model, predict_trade
+from .model import TradingAI, NeuralNetwork, train_model, predict_trade
