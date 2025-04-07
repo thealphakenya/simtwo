@@ -13,7 +13,7 @@ from tensorflow.keras.layers import Input  # Import Input layer from Keras
 # ===========================
 # 📦 AI Trading Integration
 # ===========================
-from backend.ai_models import TradingAI
+from backend.ai_models import TradingAI, ReinforcementLearning
 
 # ===========================
 # 📦 Configuration
@@ -55,7 +55,10 @@ except Exception as e:
 
 fetcher = DataFetcher(api_key=config.API_KEY, api_secret=config.API_SECRET, trade_symbol=config.TRADE_SYMBOL)
 order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SECRET)
+
+# Initialize TradingAI and ReinforcementLearning models
 ai_trader = TradingAI()
+rl_trader = ReinforcementLearning()
 
 # ===========================
 # 🚀 FastAPI Setup
@@ -65,6 +68,7 @@ app = FastAPI()
 # ===========================
 # 🚀 API Routes
 # ===========================
+
 @app.get("/api/market_data")
 async def get_market_data_api():
     logging.debug("Fetching market data for %s", config.TRADE_SYMBOL)
@@ -86,11 +90,23 @@ async def balance():
         raise HTTPException(status_code=500, detail="Error fetching balance")
 
 @app.get("/api/ai/signal")
-async def ai_signal():
+async def ai_signal(model_type: str = 'ai'):
+    """
+    Get trading signal using the specified AI model type ('ai' for TradingAI, 'rl' for ReinforcementLearning)
+    """
     try:
+        # Fetch the market data
         market_data = fetcher.fetch_ohlcv_array(window=60)  # Ensure this returns a (60, 5) array
         market_data = np.expand_dims(market_data, axis=0)  # Add batch dimension
-        action = ai_trader.predict_action(market_data)
+        
+        # Choose the model based on the query parameter
+        if model_type == 'rl':
+            action = rl_trader.predict(market_data)
+            logging.debug("AI predicted action (RL): %s", action)
+        else:
+            action = ai_trader.predict_action(market_data)
+            logging.debug("AI predicted action (TradingAI): %s", action)
+
         return {"action": action}
     except Exception as e:
         logging.error("Error getting AI prediction: %s", str(e))
@@ -155,8 +171,14 @@ def run_trading_job():
     try:
         market_data = fetcher.fetch_ohlcv_array(window=60)
         market_data = np.expand_dims(market_data, axis=0)
-        ai_action = ai_trader.predict_action(market_data)
-        logging.info(f"📊 AI Action: {ai_action}")
+        
+        # AI Model Decision (can choose TradingAI or ReinforcementLearning)
+        ai_action = ai_trader.predict_action(market_data)  # Default to TradingAI
+        logging.info(f"📊 AI Action (TradingAI): {ai_action}")
+
+        # Or if you'd like to use the RL model:
+        # ai_action = rl_trader.predict(market_data)
+        # logging.info(f"📊 AI Action (RL): {ai_action}")
 
         if ai_action == "buy" or ai_action == "sell":
             balance = fetcher.fetch_balance()["available"]

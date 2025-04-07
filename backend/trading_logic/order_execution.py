@@ -1,26 +1,25 @@
-# backend/trading_logic/order_execution.py
-
 import time
 import logging
+import numpy as np
 from binance.client import Client
 from binance.enums import (
     SIDE_BUY, SIDE_SELL,
     ORDER_TYPE_MARKET, ORDER_TYPE_LIMIT,
     TIME_IN_FORCE_GTC
 )
+from ai_models import TradingAI, ReinforcementLearning, train_model  # ✅ Added AI model import
 
 # ============================
 # 🚀 Order Execution Class
 # ============================
 class OrderExecution:
     def __init__(self, api_key=None, api_secret=None):
-        # Ensure that API key and secret are provided, either via config or explicitly
         if not api_key or not api_secret:
             raise ValueError("API key and secret must be provided.")
         
         self.api_key = api_key
         self.api_secret = api_secret
-        self.client = Client(self.api_key, self.api_secret)  # Initialize the Binance client with the API credentials
+        self.client = Client(self.api_key, self.api_secret)
 
     def place_market_order(self, symbol='BTCUSDT', side=SIDE_BUY, quantity=1.0):
         try:
@@ -66,7 +65,7 @@ class OrderExecution:
         return self.place_market_order(symbol, side, quantity)
 
 # ============================
-# 📈 Optional: Trading Strategy
+# 📈 Optional: Trading Strategy with Reinforcement Learning
 # ============================
 class TradingLogic:
     def __init__(self, api_key=None, api_secret=None, symbol='BTCUSDT', short_window=50, long_window=200):
@@ -75,6 +74,10 @@ class TradingLogic:
         self.long_window = long_window
         self.position = None
         self.order_executor = OrderExecution(api_key, api_secret)
+        self.rl_model = ReinforcementLearning(state_size=3, action_size=3)  # Example state size and action size for RL
+        self.previous_state = None
+        self.previous_action = None
+        self.reward = 0
 
     def fetch_data(self):
         try:
@@ -97,35 +100,68 @@ class TradingLogic:
         long_sma = sum(closes[-self.long_window:]) / self.long_window
         return short_sma, long_sma
 
-    def check_trade_signal(self, short_sma, long_sma):
-        if short_sma > long_sma and self.position != 'long':
-            return 'buy'
-        elif short_sma < long_sma and self.position != 'short':
-            return 'sell'
-        return None
+    def get_state(self):
+        data = self.fetch_data()
+        short_sma, long_sma = self.calculate_indicators(data)
+        if short_sma is None or long_sma is None:
+            return None
+        # Return state as a tuple (short_sma, long_sma, current price)
+        current_price = data['close'][-1] if len(data['close']) > 0 else 0
+        return np.array([short_sma, long_sma, current_price])
 
-    def execute_order(self, signal):
-        if signal == 'buy':
+    def execute_order(self, action):
+        if action == 0:  # Action 0: Buy
             logging.info(f"Executing BUY order for {self.symbol}")
             self.order_executor.execute_trade(self.symbol, SIDE_BUY, 1.0)
             self.position = 'long'
-        elif signal == 'sell':
+        elif action == 1:  # Action 1: Sell
             logging.info(f"Executing SELL order for {self.symbol}")
             self.order_executor.execute_trade(self.symbol, SIDE_SELL, 1.0)
             self.position = 'short'
+        elif action == 2:  # Action 2: Hold
+            logging.info(f"Holding position for {self.symbol}")
+            self.position = self.position
+
+    def update_reward(self, action, current_price):
+        # Simple reward function: profit/loss from last action
+        if self.previous_action is None:
+            return 0  # No reward yet
+
+        reward = 0
+        if action == 0 and self.previous_action == 1:  # Bought after selling
+            reward = current_price - self.previous_price  # Profit from buy action
+        elif action == 1 and self.previous_action == 0:  # Sold after buying
+            reward = self.previous_price - current_price  # Profit from sell action
+
+        return reward
 
     def run(self):
         while True:
             try:
-                data = self.fetch_data()
-                short_sma, long_sma = self.calculate_indicators(data)
-                if short_sma is None or long_sma is None:
+                state = self.get_state()
+                if state is None:
                     time.sleep(60)
                     continue
 
-                signal = self.check_trade_signal(short_sma, long_sma)
-                if signal:
-                    self.execute_order(signal)
+                # Get action from the RL model (0: Buy, 1: Sell, 2: Hold)
+                action = self.rl_model.act(state)
+
+                # Execute the trade based on the action
+                self.execute_order(action)
+
+                # Get current price to calculate reward
+                data = self.fetch_data()
+                current_price = data['close'][-1] if len(data['close']) > 0 else 0
+
+                # Update reward based on action and previous state
+                reward = self.update_reward(action, current_price)
+                self.rl_model.remember(self.previous_state, self.previous_action, reward, state)
+                self.rl_model.learn()  # Train model with the recent experience
+
+                # Save state and action for next step
+                self.previous_state = state
+                self.previous_action = action
+                self.previous_price = current_price
 
                 time.sleep(60)
             except Exception as e:
@@ -154,7 +190,7 @@ def execute_order(symbol, quantity, order_type='market', price=None, side=SIDE_B
 # 🧪 CLI Testing
 # ============================
 if __name__ == "__main__":
-    # Replace with appropriate values for testing
+    # Example API keys for testing (replace with actual values)
     api_key = 'your_api_key_here'
     api_secret = 'your_api_secret_here'
     

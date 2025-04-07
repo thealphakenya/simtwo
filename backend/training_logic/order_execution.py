@@ -1,5 +1,3 @@
-# backend/trading_logic/order_execution.py
-
 import time
 import logging
 from binance.client import Client
