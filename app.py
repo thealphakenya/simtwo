@@ -1,5 +1,23 @@
+# ===========================
+# ✅ TensorFlow Setup
+# ===========================
 import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable GPU usage
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logs
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'  # Disable oneDNN for consistent numerical results
+
+import sys
 import logging
+import contextlib
+from io import StringIO
+
+# Temporarily suppress stderr during TensorFlow import to avoid cu* factory spam
+with contextlib.redirect_stderr(StringIO()):
+    import tensorflow as tf
+
+# ===========================
+# 📦 Main Imports
+# ===========================
 import atexit
 import hmac
 import hashlib
