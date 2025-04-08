@@ -4,9 +4,9 @@ Simtwo is a powerful AI-powered trading application that uses advanced algorithm
 
 ## Features
 - **AI Strategy Settings**: Use machine learning models like reinforcement learning, neural networks, or decision trees to automate trading strategies.
-- **Real-Time Trading & Backtesting**: Execute trades in real-time or simulate trading strategies.
-- **Performance Metrics**: Monitor key trading performance indicators such as P&L, Sharpe Ratio, and win rate.
-- **Auto Trade & Emergency Stop**: Automatically execute trades and stop all trading activities with the emergency stop button.
+- **Real-Time Trading & Backtesting**: Execute trades in real-time or simulate trading strategies with historical data.
+- **Performance Metrics**: Monitor key trading performance indicators such as P&L (Profit & Loss), Sharpe Ratio, and win rate.
+- **Auto Trade & Emergency Stop**: Automatically execute trades based on AI-driven strategies and stop all trading activities with an emergency stop button.
 
 ## Requirements
 1. Python 3.8+

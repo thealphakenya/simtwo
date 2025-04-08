@@ -1,4 +1,4 @@
-name: Deploy to Railway
+name: Deploy to Railway (Docker)
 
 on:
   push:
@@ -11,36 +11,65 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    # Checkout the code from the repository
-    - name: Checkout code
-      uses: actions/checkout@v4
+      # Checkout the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    # Set up Docker Buildx (for building multi-platform images)
-    - name: Set up Docker
-      uses: docker/setup-buildx-action@v2
+      # Set up Docker Buildx (for building multi-platform images)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    # Build Docker image from the Dockerfile
-    - name: Build Docker image
-      run: |
-        docker build -t my-flask-app:latest .
+      # Log in to Docker registry (Docker Hub or your custom registry)
+      - name: Log in to Docker registry
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-    # Log in to Docker registry (Docker Hub or your custom registry)
-    - name: Log in to Docker registry
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      # Set up Docker Hub mirror and enable BuildKit optimizations
+      - name: Configure Docker Mirror and BuildKit
+        run: |
+          echo '{
+            "builder": {
+              "gc": {
+                "enabled": true
+              }
+            },
+            "features": {
+              "buildkit": true
+            },
+            "registry-mirrors": ["https://registry-1.docker.io"]
+          }' > ~/.docker/config.json
 
-    # Tag the image and push to Docker registry (Docker Hub or your custom registry)
-    - name: Push Docker image to registry
-      run: |
-        docker tag my-flask-app:latest ${{ secrets.DOCKER_USERNAME }}/my-flask-app:latest
-        docker push ${{ secrets.DOCKER_USERNAME }}/my-flask-app:latest
+      # Build Docker image using BuildKit
+      - name: Build Docker image
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t registry.railway.app/simtwo:${{ github.sha }} .
 
-    # Trigger Railway deployment via Railway API (replace with your Railway API token)
-    - name: Trigger Railway Deployment
-      run: |
-        curl -X POST https://api.railway.app/v1/your-deployment-endpoint \
-        -H "Authorization: Bearer ${{ secrets.RAILWAY_API_TOKEN }}" \
-        -H "Content-Type: application/json" \
-        -d '{"branch": "main", "image": "${{ secrets.DOCKER_USERNAME }}/my-flask-app:latest"}'
+      # Push the built Docker image to the registry
+      - name: Push Docker image to registry
+        run: |
+          docker push registry.railway.app/simtwo:${{ github.sha }}
+
+      # Install Node.js and run script.js to trigger Railway redeploy
+      - name: Set up Node.js and run Railway Redeploy Script
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16' # Adjust Node.js version as needed
+
+      - name: Run Railway Redeploy Script
+        run: |
+          echo "Running Railway Redeploy script..."
+          npm install -g https
+          node ./script.js ${{ secrets.RAILWAY_TOKEN }}
+
+      # Log in to Railway CLI
+      - name: Log in to Railway CLI
+        run: |
+          npm install -g @railway/cli
+          railway login --token ${{ secrets.RAILWAY_TOKEN }}
+
+      # Deploy to Railway using Railway CLI
+      - name: Deploy to Railway
+        run: |
+          railway up --service=simtwo --detach

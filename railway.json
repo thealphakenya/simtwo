@@ -9,11 +9,11 @@
       "envs": [
         {
           "key": "BINANCE_API_KEY",
-          "value": "your_actual_binance_api_key"
+          "value": "${{ secrets.BINANCE_API_KEY }}"
         },
         {
           "key": "BINANCE_SECRET_KEY",
-          "value": "your_actual_binance_secret_key"
+          "value": "${{ secrets.BINANCE_SECRET_KEY }}"
         }
       ],
       "ports": {

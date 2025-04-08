@@ -12,7 +12,20 @@ RUN apt-get update && \
     apt-get install -y gcc libpq-dev curl && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt . 
+RUN mkdir -p ~/.docker && \
+    echo '{
+        "builder": {
+            "gc": {
+                "enabled": true
+            }
+        },
+        "features": {
+            "buildkit": true
+        },
+        "registry-mirrors": ["https://registry-1.docker.io"]
+    }' > ~/.docker/config.json
+
+COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
