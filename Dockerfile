@@ -20,6 +20,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY . /app/
 
+# Copy frontend static files (index.html and app.js)
 COPY ./frontend/index.html /app/frontend/index.html
 COPY ./frontend/js/app.js /app/frontend/js/app.js
 

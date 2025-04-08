@@ -32,7 +32,7 @@ jobs:
             "registry-mirrors": ["https://registry-1.docker.io"]
           }' > ~/.docker/config.json
 
-      - name: Build Docker image
+      - name: Build Docker image with BuildKit
         run: |
           DOCKER_BUILDKIT=1 docker build -t registry.railway.app/simtwo:${{ github.sha }} .
 
