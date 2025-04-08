@@ -11,10 +11,7 @@ ENV TF_ENABLE_ONEDNN_OPTS=0
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-RUN mkdir -p /app/backend
-RUN mkdir -p /app/frontend
-
-COPY ./frontend /app/frontend/
+COPY ./frontend/build /app/frontend/build/
 COPY ./backend /app/backend/
 
 RUN pip install gunicorn

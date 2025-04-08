@@ -5,7 +5,7 @@ import contextlib
 from io import StringIO
 import hmac
 import hashlib
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Body
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -24,10 +24,8 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 with contextlib.redirect_stderr(StringIO()):
     import tensorflow as tf
 
-# Add backend to system path to resolve module import issues
-sys.path.append('/app/backend')  # Path to where the ai_models module is located
+sys.path.append('/app/backend')
 
-# Configuration class
 class Config:
     API_KEY = os.getenv('BINANCE_API_KEY')
     API_SECRET = os.getenv('BINANCE_SECRET_KEY')
@@ -41,13 +39,11 @@ logging.basicConfig(level=logging.DEBUG)
 API_KEY = config.API_KEY
 API_SECRET = config.API_SECRET
 
-# Check for missing API keys
 if not API_KEY or not API_SECRET:
     logging.error("API Key or Secret is missing!")
 else:
     logging.debug(f"API Key: {API_KEY}, API Secret: {API_SECRET}")
 
-# Import required modules for trading logic and AI models
 from backend.trading_logic.order_execution import OrderExecution, TradingLogic
 from training_logic.order_execution import execute_order
 from data.data_fetcher import DataFetcher
@@ -65,16 +61,13 @@ order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SE
 ai_trader = TradingAI()
 rl_trader = ReinforcementLearning()
 
-# FastAPI app initialization
 app = FastAPI()
 
-# Serve static files from 'frontend' directory
 app.mount("/static", StaticFiles(directory="frontend/build"), name="static")
 
-# Serve the index.html page (or your main page) from the frontend build folder
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
-    with open("frontend/build/index.html") as f:  # Adjust path if necessary
+    with open("frontend/build/index.html") as f:
         return f.read()
 
 @app.get("/api/market_data")
@@ -102,7 +95,7 @@ async def ai_signal(model_type: str = 'ai'):
     try:
         market_data = fetcher.fetch_ohlcv_array(window=60)
         market_data = np.expand_dims(market_data, axis=0)
-        
+
         if model_type == 'rl':
             action = rl_trader.predict(market_data)
             logging.debug("AI predicted action (RL): %s", action)
@@ -115,6 +108,7 @@ async def ai_signal(model_type: str = 'ai'):
         logging.error("Error getting AI prediction: %s", str(e))
         raise HTTPException(status_code=500, detail="AI prediction error")
 
+# 🔒 Webhook signature verification
 def verify_webhook_signature(request):
     received_sig = request.headers.get('X-Signature')
     if not received_sig:
@@ -163,31 +157,17 @@ async def webhook_listener(request: Request):
 def notify_team(message):
     logging.info(f"📣 Team Notification: {message}")
 
-def run_trading_job():
-    logging.info("⏰ Running scheduled trading job...")
-    try:
-        market_data = fetcher.fetch_ohlcv_array(window=60)
-        market_data = np.expand_dims(market_data, axis=0)
-        
-        ai_action = ai_trader.predict_action(market_data)
-        logging.info(f"📊 AI Action (TradingAI): {ai_action}")
+@app.post("/api/order")
+async def place_order(order: dict = Body(...)):
+    logging.info(f"📦 Received order: {order}")
+    # Simulate order (replace with real execution if needed)
+    return {"status": "Order received", "order": order}
 
-        if ai_action == "buy" or ai_action == "sell":
-            balance = fetcher.fetch_balance()["available"]
-            position_size = ai_trader.calculate_position_size(balance)
-            execute_order(symbol=config.TRADE_SYMBOL, side=ai_action, quantity=position_size)
-            logging.info(f"✅ Executed {ai_action.upper()} for {position_size} {config.TRADE_SYMBOL}")
-        else:
-            logging.info("🤖 AI suggested to hold. No action taken.")
-
-    except Exception as e:
-        logging.error("Error in scheduled trading job: %s", str(e))
-
-# Background scheduler to run the trading job periodically
-scheduler = BackgroundScheduler()
-scheduler.add_job(run_trading_job, trigger='interval', seconds=300)
-scheduler.start()
-atexit.register(lambda: scheduler.shutdown())
+@app.post("/api/emergency_stop")
+async def emergency_stop():
+    logging.warning("🚨 Emergency stop triggered!")
+    # Simulate emergency halt logic here
+    return {"status": "Emergency stop activated"}
 
 @app.get("/health")
 async def health_check():
@@ -217,9 +197,32 @@ async def health_check():
         logging.error("Health check failed: %s", str(e))
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
-# Dynamically read the port from the environment or default to 5000
+def run_trading_job():
+    logging.info("⏰ Running scheduled trading job...")
+    try:
+        market_data = fetcher.fetch_ohlcv_array(window=60)
+        market_data = np.expand_dims(market_data, axis=0)
+
+        ai_action = ai_trader.predict_action(market_data)
+        logging.info(f"📊 AI Action (TradingAI): {ai_action}")
+
+        if ai_action == "buy" or ai_action == "sell":
+            balance = fetcher.fetch_balance()["available"]
+            position_size = ai_trader.calculate_position_size(balance)
+            execute_order(symbol=config.TRADE_SYMBOL, side=ai_action, quantity=position_size)
+            logging.info(f"✅ Executed {ai_action.upper()} for {position_size} {config.TRADE_SYMBOL}")
+        else:
+            logging.info("🤖 AI suggested to hold. No action taken.")
+    except Exception as e:
+        logging.error("Error in scheduled trading job: %s", str(e))
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(run_trading_job, trigger='interval', seconds=300)
+scheduler.start()
+atexit.register(lambda: scheduler.shutdown())
+
 if __name__ == '__main__':
     import uvicorn
-    port = int(os.getenv("PORT", 5000))  # Default to 5000 if not set by environment
+    port = int(os.getenv("PORT", 5000))
     logging.info("🚀 Starting FastAPI App")
     uvicorn.run(app, host="0.0.0.0", port=port, debug=True)
