@@ -6,7 +6,7 @@ flask_socketio
 gunicorn
 
 # ML & Data Science
-tensorflow
+tensorflow-cpu
 numpy
 pandas
 scikit-learn
