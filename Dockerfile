@@ -15,6 +15,7 @@ RUN mkdir -p /app/backend
 RUN mkdir -p /app/frontend
 
 COPY ./frontend /app/frontend/
+COPY ./backend /app/backend/
 
 RUN pip install gunicorn
 

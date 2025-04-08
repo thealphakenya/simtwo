@@ -24,6 +24,9 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 with contextlib.redirect_stderr(StringIO()):
     import tensorflow as tf
 
+# Add backend to system path to resolve module import issues
+sys.path.append('/app/backend')  # Path to where the ai_models module is located
+
 # Configuration class
 class Config:
     API_KEY = os.getenv('BINANCE_API_KEY')
