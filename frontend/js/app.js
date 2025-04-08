@@ -1,133 +1,255 @@
-import logging
+# ===========================
+# ✅ TensorFlow Setup
+# ===========================
 import os
-import time
-import requests
-import psutil
-import asyncio
-from flask import Flask, jsonify, render_template
-from flask_socketio import SocketIO
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable GPU usage
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logs
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'  # Disable oneDNN for consistent numerical results
+
+import sys
+import logging
+import contextlib
+from io import StringIO
+
+# Temporarily suppress stderr during TensorFlow import to avoid cu* factory spam
+with contextlib.redirect_stderr(StringIO()):
+    import tensorflow as tf
+
+# ===========================
+# 📦 Main Imports
+# ===========================
+import atexit
+import hmac
+import hashlib
+from fastapi import FastAPI, Request, HTTPException
+from pydantic import BaseModel
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 from binance.client import Client
+import numpy as np
+from tensorflow.keras.layers import Input  # Import Input layer from Keras
 
-# Set up logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# ===========================
+# 📦 AI Trading Integration
+# ===========================
+from backend.ai_models import TradingAI, ReinforcementLearning
 
-# Initialize Flask app and SocketIO
-app = Flask(__name__)
-socketio = SocketIO(app)
+# ===========================
+# 📦 Configuration
+# ===========================
+class Config:
+    API_KEY = os.getenv('BINANCE_API_KEY')
+    API_SECRET = os.getenv('BINANCE_SECRET_KEY')
+    TRADE_SYMBOL = 'BTCUSDT'
+    TRADE_QUANTITY = 0.01
+    WEBHOOK_SECRET = 'd9f1a3d47f83e25f92c97a912b3ac31c45ff98c87e2e98b03d78a12a78a813f5'
 
-# API Key and Secret for Binance
-api_key = '3WohOdIVubUyXpqgkLvyNnOMzDwu2rX6jOpp2x53U39bL9gfDIVaTUSIUFIebOoC'
-api_secret = 'EOhCwX57bCVqGhThezazN0frWBAPGBN9elIcBH8Ejk91uqPieCBUnYh0dVPdysoA'
-binance_client = Client(api_key, api_secret)
+config = Config()
 
-# Trading pair and market data
-current_pair = "BTCUSDT"
+# Setup logging
+logging.basicConfig(level=logging.DEBUG)
+API_KEY = config.API_KEY
+API_SECRET = config.API_SECRET
 
-# Initialize Scheduler for background tasks
-scheduler = BackgroundScheduler()
-scheduler.start()
+if not API_KEY or not API_SECRET:
+    logging.error("API Key or Secret is missing!")
+else:
+    logging.debug(f"API Key: {API_KEY}, API Secret: {API_SECRET}")
 
-# Monitor system resources
-def monitor_resources():
-    cpu_usage = psutil.cpu_percent(interval=1)
-    memory_info = psutil.virtual_memory()
-    logger.info("CPU Usage: %s%%", cpu_usage)
-    logger.info("Memory Usage: %s%% (Available: %s MB)", memory_info.percent, memory_info.available / (1024 * 1024))
+# ===========================
+# 📦 Backend Module Imports
+# ===========================
+from backend.trading_logic.order_execution import OrderExecution, TradingLogic
+from training_logic.order_execution import execute_order
+from data.data_fetcher import DataFetcher
 
-# Fetch market data
-def fetch_market_data():
+# ===========================
+# 🔐 API Setup
+# ===========================
+try:
+    client = Client(config.API_KEY, config.API_SECRET)
+except Exception as e:
+    logging.error(f"Error initializing Binance Client: {str(e)}")
+    raise
+
+fetcher = DataFetcher(api_key=config.API_KEY, api_secret=config.API_SECRET, trade_symbol=config.TRADE_SYMBOL)
+order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SECRET)
+
+# Initialize TradingAI and ReinforcementLearning models
+ai_trader = TradingAI()
+rl_trader = ReinforcementLearning()
+
+# ===========================
+# 🚀 FastAPI Setup
+# ===========================
+app = FastAPI()
+
+# ===========================
+# 🚀 API Routes
+# ===========================
+
+@app.get("/api/market_data")
+async def get_market_data_api():
+    logging.debug("Fetching market data for %s", config.TRADE_SYMBOL)
     try:
-        logger.debug("Fetching market data for pair: %s", current_pair)
-        avg_price = binance_client.get_avg_price(symbol=current_pair)
-        price = avg_price['price']
-        logger.debug("Fetched price: %s", price)
-        return price
+        data = fetcher.fetch_ticker(config.TRADE_SYMBOL)
+        return data
     except Exception as e:
-        logger.error("Failed to fetch market data: %s", e, exc_info=True)
-        return None
+        logging.error("Error fetching market data: %s", str(e))
+        raise HTTPException(status_code=500, detail="Error fetching market data")
 
-# Periodic job to fetch market data
-@scheduler.scheduled_job(IntervalTrigger(seconds=60))
-def update_market_data():
-    price = fetch_market_data()
-    if price:
-        socketio.emit('market_data', {'price': price})
-
-# Web route to serve market data
-@app.route('/api/market_data', methods=['GET'])
-def market_data():
+@app.get("/api/balance")
+async def balance():
+    logging.debug("Fetching account balance")
     try:
-        price = fetch_market_data()
-        if price:
-            return jsonify({'prices': [[time.time(), float(price)]]}), 200
+        balance_data = fetcher.fetch_balance()
+        return balance_data
+    except Exception as e:
+        logging.error("Error fetching balance: %s", str(e))
+        raise HTTPException(status_code=500, detail="Error fetching balance")
+
+@app.get("/api/ai/signal")
+async def ai_signal(model_type: str = 'ai'):
+    """
+    Get trading signal using the specified AI model type ('ai' for TradingAI, 'rl' for ReinforcementLearning)
+    """
+    try:
+        # Fetch the market data
+        market_data = fetcher.fetch_ohlcv_array(window=60)  # Ensure this returns a (60, 5) array
+        market_data = np.expand_dims(market_data, axis=0)  # Add batch dimension
+        
+        # Choose the model based on the query parameter
+        if model_type == 'rl':
+            action = rl_trader.predict(market_data)
+            logging.debug("AI predicted action (RL): %s", action)
         else:
-            return jsonify({'error': 'Failed to fetch market data'}), 500
-    except Exception as e:
-        logger.error("Error fetching market data: %s", e, exc_info=True)
-        return jsonify({'error': 'Internal Server Error'}), 500
+            action = ai_trader.predict_action(market_data)
+            logging.debug("AI predicted action (TradingAI): %s", action)
 
-# WebSocket events
-@socketio.on('place_order')
-def handle_place_order(data):
+        return {"action": action}
+    except Exception as e:
+        logging.error("Error getting AI prediction: %s", str(e))
+        raise HTTPException(status_code=500, detail="AI prediction error")
+
+# ===========================
+# 📡 Webhook Listener
+# ===========================
+def verify_webhook_signature(request):
+    received_sig = request.headers.get('X-Signature')
+    if not received_sig:
+        logging.warning("🚫 Webhook signature missing!")
+        return False
+
+    computed_sig = hmac.new(
+        key=config.WEBHOOK_SECRET.encode(),
+        msg=request.body,
+        digestmod=hashlib.sha256
+    ).hexdigest()
+
+    if not hmac.compare_digest(received_sig, computed_sig):
+        logging.warning("🚫 Webhook signature mismatch!")
+        return False
+    return True
+
+@app.post("/webhook")
+async def webhook_listener(request: Request):
+    if not verify_webhook_signature(request):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+
+    event = await request.json()
+    event_type = event.get('event', '')
+    status = event.get('status', '')
+
+    logging.info(f"📬 Webhook received: {event_type}, status: {status}")
+
+    if 'build' in event_type:
+        if status == 'success':
+            logging.info("✅ Build succeeded.")
+            notify_team("✅ Build succeeded on Railway.")
+        elif status == 'failed':
+            logging.error("❌ Build failed.")
+            notify_team("❌ Build failed. Check the logs.")
+    elif 'deploy' in event_type:
+        if status == 'success':
+            logging.info("🚀 Deployment succeeded.")
+            notify_team("🚀 Deployment completed successfully.")
+        elif status == 'failed':
+            logging.error("🔥 Deployment failed.")
+            notify_team("🔥 Deployment failed. Manual intervention may be needed.")
+
+    return {"status": "Webhook received"}
+
+def notify_team(message):
+    logging.info(f"📣 Team Notification: {message}")
+
+# ===========================
+# ⏰ Background Trading Job
+# ===========================
+def run_trading_job():
+    logging.info("⏰ Running scheduled trading job...")
     try:
-        logger.debug("Placing order: %s", data)
-        # Add order placement logic here (buy/sell)
-        socketio.emit('order_status', {'status': 'Order placed successfully'})
-    except Exception as e:
-        logger.error("Error placing order: %s", e, exc_info=True)
-        socketio.emit('order_status', {'status': 'Error placing order'})
+        market_data = fetcher.fetch_ohlcv_array(window=60)
+        market_data = np.expand_dims(market_data, axis=0)
+        
+        # AI Model Decision (can choose TradingAI or ReinforcementLearning)
+        ai_action = ai_trader.predict_action(market_data)  # Default to TradingAI
+        logging.info(f"📊 AI Action (TradingAI): {ai_action}")
 
-@socketio.on('emergency_stop')
-def handle_emergency_stop(data):
+        # Or if you'd like to use the RL model:
+        # ai_action = rl_trader.predict(market_data)
+        # logging.info(f"📊 AI Action (RL): {ai_action}")
+
+        if ai_action == "buy" or ai_action == "sell":
+            balance = fetcher.fetch_balance()["available"]
+            position_size = ai_trader.calculate_position_size(balance)
+            execute_order(symbol=config.TRADE_SYMBOL, side=ai_action, quantity=position_size)
+            logging.info(f"✅ Executed {ai_action.upper()} for {position_size} {config.TRADE_SYMBOL}")
+        else:
+            logging.info("🤖 AI suggested to hold. No action taken.")
+
+    except Exception as e:
+        logging.error("Error in scheduled trading job: %s", str(e))
+
+# Setup the scheduler with a longer interval (e.g., 5 minutes instead of 1 minute)
+scheduler = BackgroundScheduler()
+scheduler.add_job(run_trading_job, trigger='interval', seconds=300)  # Adjusted interval to 5 minutes
+scheduler.start()
+atexit.register(lambda: scheduler.shutdown())
+
+# ===========================
+# 💓 Health Check Endpoint
+# ===========================
+@app.get("/health")
+async def health_check():
+    logging.debug("Health check initiated.")
     try:
-        logger.info("Emergency stop triggered: %s", data)
-        # Handle emergency stop logic (e.g., stop trading)
-        socketio.emit('emergency_stop_status', {'status': 'Trading stopped'})
+        health_data = {
+            "status": "healthy",
+            "message": "All systems are running smoothly."
+        }
+
+        try:
+            client.ping()
+            health_data["binance_api"] = "Connected"
+        except Exception as e:
+            health_data["binance_api"] = f"Failed: {str(e)}"
+            logging.error("Error with Binance API: %s", str(e))
+
+        try:
+            fetcher.fetch_ticker(config.TRADE_SYMBOL)
+            health_data["data_fetcher"] = "Working"
+        except Exception as e:
+            health_data["data_fetcher"] = f"Failed: {str(e)}"
+            logging.error("Error with DataFetcher: %s", str(e))
+
+        return health_data
     except Exception as e:
-        logger.error("Error during emergency stop: %s", e, exc_info=True)
-        socketio.emit('emergency_stop_status', {'status': 'Error stopping trading'})
+        logging.error("Health check failed: %s", str(e))
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
-@socketio.on('chat_message')
-def handle_chat_message(data):
-    try:
-        message = data.get('message')
-        logger.info("Received chat message: %s", message)
-        # Simulate AI response (this could be more complex, e.g., using GPT-3 or similar)
-        response = f"AI: {message[::-1]}"  # Simple reversal of the message for demo purposes
-        socketio.emit('ai_response', response)
-    except Exception as e:
-        logger.error("Error handling chat message: %s", e, exc_info=True)
-        socketio.emit('ai_response', "Error handling your message")
-
-@socketio.on('get_ai_status')
-def handle_ai_status():
-    try:
-        logger.debug("Fetching AI status...")
-        # Here you could query the AI model's current status
-        ai_status = 'active'  # For demo purposes, we assume the AI is always active
-        socketio.emit('ai_status', ai_status)
-    except Exception as e:
-        logger.error("Error fetching AI status: %s", e, exc_info=True)
-        socketio.emit('ai_status', 'inactive')
-
-# Frontend route to serve HTML
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-# Error handling (for unexpected crashes)
-@app.errorhandler(Exception)
-def handle_error(error):
-    logger.error("Unexpected error occurred: %s", error, exc_info=True)
-    return jsonify({'error': 'An unexpected error occurred'}), 500
-
+# ===========================
+# 🏁 Start App
+# ===========================
 if __name__ == '__main__':
-    logger.info("Starting Flask app...")
-    try:
-        monitor_resources()  # Initial resource monitoring
-        socketio.run(app, host='0.0.0.0', port=5000, debug=True)
-    except Exception as e:
-        logger.error("Error starting Flask app: %s", e, exc_info=True)
+    import uvicorn
+    logging.info("🚀 Starting FastAPI App")
+    uvicorn.run(app, host="0.0.0.0", port=5000, debug=True)
