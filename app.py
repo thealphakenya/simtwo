@@ -6,6 +6,8 @@ from io import StringIO
 import hmac
 import hashlib
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.client import Client
@@ -62,6 +64,15 @@ rl_trader = ReinforcementLearning()
 
 # FastAPI app initialization
 app = FastAPI()
+
+# Serve static files from 'frontend' directory
+app.mount("/static", StaticFiles(directory="frontend/build"), name="static")
+
+# Serve the index.html page (or your main page) from the frontend build folder
+@app.get("/", response_class=HTMLResponse)
+async def get_index():
+    with open("frontend/build/index.html") as f:  # Adjust path if necessary
+        return f.read()
 
 @app.get("/api/market_data")
 async def get_market_data_api():
