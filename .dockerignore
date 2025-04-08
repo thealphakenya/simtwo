@@ -1,5 +1,14 @@
 __pycache__/
 *.pyc
 *.pyo
-.env
-.git
+*.pyd
+env/
+.venv/
+build/
+dist/
+*.db
+*.sqlite3
+.DS_Store
+.git/
+.gitignore
+frontend/node_modules

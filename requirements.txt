@@ -1,22 +1,22 @@
-# Core Frameworks
+# === Core Web Frameworks ===
 fastapi
-uvicorn
+uvicorn[standard]
 flask
-flask_socketio
+flask-socketio
 gunicorn
 
-# ML & Data Science
-tensorflow-cpu
-numpy
-pandas
-scikit-learn
-scipy
-keras
+# === ML & Data Science ===
+tensorflow-cpu>=2.11.0
+numpy>=1.21.0
+pandas>=1.3.0
+scikit-learn>=1.0
+scipy>=1.7
+keras>=2.11
 Keras-Preprocessing
 joblib
 h5py
 
-# AI/TF dependencies
+# === TensorFlow + AI Dependencies (Handled by TensorFlow usually) ===
 absl-py
 astunparse
 flatbuffers
@@ -28,27 +28,27 @@ opt-einsum
 protobuf
 six
 
-# Binance & Trading
+# === Binance & Trading ===
 python-binance
 websockets
 requests
 APScheduler
 
-# FastAPI Extras
+# === FastAPI Extras ===
 python-multipart
 python-dotenv
 
-# Flask dependencies
+# === Flask Extras ===
 click
 itsdangerous
 jinja2
 MarkupSafe
 werkzeug
 
-# Utilities
+# === Utility Libraries ===
 python-dateutil
 pytz
 idna
 certifi
 charset-normalizer
-importlib-metadata
+importlib-metadata; python_version < "3.8"
