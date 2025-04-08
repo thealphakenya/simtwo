@@ -11,42 +11,49 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      # Checkout the code from the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set up Docker Buildx (for building multi-platform images)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Log in to Docker registry (Docker Hub or your custom registry)
       - name: Log in to Docker registry
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Generate Docker config.json and enable BuildKit
+      - name: Debug Docker Version and Info
+        run: |
+          docker --version
+          docker info
+
       - name: Configure Docker BuildKit and Mirror
         run: |
           echo '{
             "features": {
-              "buildkit": true
+              "buildkit": "enabled"
             },
             "registry-mirrors": ["https://registry-1.docker.io"]
           }' > $HOME/.docker/config.json
 
-      # Build Docker image using BuildKit
+      - name: Debug Docker Config
+        run: |
+          echo "Contents of .docker/config.json:"
+          cat $HOME/.docker/config.json
+
       - name: Build Docker image
         run: |
           DOCKER_BUILDKIT=1 docker build -t registry.railway.app/simtwo:${{ github.sha }} .
 
-      # Push the built Docker image to the registry
+      - name: Debug Docker Images
+        run: |
+          docker images
+
       - name: Push Docker image to registry
         run: |
           docker push registry.railway.app/simtwo:${{ github.sha }}
 
-      # Set up Node.js and run Railway Redeploy Script
       - name: Set up Node.js and run Railway Redeploy Script
         uses: actions/setup-node@v3
         with:
@@ -58,13 +65,11 @@ jobs:
           npm install -g https
           node ./script.js ${{ secrets.RAILWAY_TOKEN }}
 
-      # Log in to Railway CLI
       - name: Log in to Railway CLI
         run: |
           npm install -g @railway/cli
           railway login --token ${{ secrets.RAILWAY_TOKEN }}
 
-      # Deploy to Railway using Railway CLI
       - name: Deploy to Railway
         run: |
           railway up --service=simtwo --detach
