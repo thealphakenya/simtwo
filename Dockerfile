@@ -16,6 +16,8 @@ RUN mkdir -p /app/frontend
 
 COPY ./frontend /app/frontend/
 
+RUN pip install gunicorn
+
 EXPOSE 5000
 
-CMD ["gunicorn", "-c", "gunicorn.conf.py", "wsgi:app"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
