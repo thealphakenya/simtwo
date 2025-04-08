@@ -209,8 +209,9 @@ def run_trading_job():
     except Exception as e:
         logging.error("Error in scheduled trading job: %s", str(e))
 
+# Setup the scheduler with a longer interval (e.g., 5 minutes instead of 1 minute)
 scheduler = BackgroundScheduler()
-scheduler.add_job(run_trading_job, trigger='interval', seconds=60)
+scheduler.add_job(run_trading_job, trigger='interval', seconds=300)  # Adjusted interval to 5 minutes
 scheduler.start()
 atexit.register(lambda: scheduler.shutdown())
 
