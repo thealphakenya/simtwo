@@ -13,13 +13,16 @@ import numpy as np
 from tensorflow.keras.layers import Input
 import atexit
 
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Disable GPU usage
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logs
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'  # Disable oneDNN for consistent numerical results
+# Disable GPU and TensorFlow logs
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
+# Suppress unnecessary TensorFlow errors
 with contextlib.redirect_stderr(StringIO()):
     import tensorflow as tf
 
+# Configuration class
 class Config:
     API_KEY = os.getenv('BINANCE_API_KEY')
     API_SECRET = os.getenv('BINANCE_SECRET_KEY')
@@ -33,11 +36,13 @@ logging.basicConfig(level=logging.DEBUG)
 API_KEY = config.API_KEY
 API_SECRET = config.API_SECRET
 
+# Check for missing API keys
 if not API_KEY or not API_SECRET:
     logging.error("API Key or Secret is missing!")
 else:
     logging.debug(f"API Key: {API_KEY}, API Secret: {API_SECRET}")
 
+# Import required modules for trading logic and AI models
 from backend.trading_logic.order_execution import OrderExecution, TradingLogic
 from training_logic.order_execution import execute_order
 from data.data_fetcher import DataFetcher
@@ -55,6 +60,7 @@ order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SE
 ai_trader = TradingAI()
 rl_trader = ReinforcementLearning()
 
+# FastAPI app initialization
 app = FastAPI()
 
 @app.get("/api/market_data")
@@ -163,6 +169,7 @@ def run_trading_job():
     except Exception as e:
         logging.error("Error in scheduled trading job: %s", str(e))
 
+# Background scheduler to run the trading job periodically
 scheduler = BackgroundScheduler()
 scheduler.add_job(run_trading_job, trigger='interval', seconds=300)
 scheduler.start()
@@ -196,7 +203,9 @@ async def health_check():
         logging.error("Health check failed: %s", str(e))
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
+# Dynamically read the port from the environment or default to 5000
 if __name__ == '__main__':
     import uvicorn
+    port = int(os.getenv("PORT", 5000))  # Default to 5000 if not set by environment
     logging.info("🚀 Starting FastAPI App")
-    uvicorn.run(app, host="0.0.0.0", port=5000, debug=True)
+    uvicorn.run(app, host="0.0.0.0", port=port, debug=True)
