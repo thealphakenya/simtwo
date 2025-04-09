@@ -8,17 +8,27 @@
 </head>
 <body>
     <div id="container">
+        <!-- Trading Information -->
         <div id="trading-info">
             <h1>AI Trading Dashboard</h1>
-            <div id="current-symbol">Symbol: </div>
-            <div id="current-price">Price: </div>
-            <div id="current-trading-pair">Pair: </div>
+            <div id="current-symbol">Symbol: <span id="symbol">BTCUSDT</span></div>
+            <div id="current-price">Price: <span id="price">Loading...</span></div>
+            <div id="current-trading-pair">Pair: <span id="pair">BTC/USDT</span></div>
             <canvas id="chart-canvas"></canvas>
         </div>
 
         <div id="ai-status">AI Status: ACTIVE - Monitoring...</div>
 
+        <!-- Account Selection and Balance -->
+        <div id="account-selection">
+            <button id="virtualAccountBtn">Virtual Account</button>
+            <button id="realAccountBtn">Real Account</button>
+        </div>
+        <div id="balance">Balance: $200.00</div>
+
+        <!-- Auto Trading and Order Section -->
         <div id="order-section">
+            <button id="autoTradeButton">Start Auto Trading Now</button>
             <select id="order-type">
                 <option value="limit">Limit</option>
                 <option value="market">Market</option>
@@ -28,19 +38,26 @@
             <button id="place-sell-order">Sell</button>
         </div>
 
+        <!-- Emergency Stop -->
         <div id="emergency-stop">
             <button id="emergency-stop-btn">Emergency Stop</button>
         </div>
 
+        <!-- Chat with AI Section -->
         <div id="chatwithai">
+            <h3>Chat with AI</h3>
             <div id="chat-box"></div>
             <form id="chat-form">
                 <input type="text" id="chat-input" placeholder="Ask AI..." />
                 <button type="submit">Send</button>
             </form>
         </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading"></div>
     </div>
 
+    <!-- Include external JS for charting -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/static/js/app.js"></script>
 </body>

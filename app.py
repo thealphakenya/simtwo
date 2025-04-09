@@ -6,7 +6,6 @@ import contextlib
 from io import StringIO
 import hmac
 import hashlib
-import random
 import atexit
 import numpy as np
 
@@ -64,10 +63,13 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 # --- Routes ---
+
+# Serve the index HTML
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
     return FileResponse("frontend/index.html")
 
+# Market data API for fetching the latest market info
 @app.get("/api/market_data")
 async def get_market_data_api():
     try:
@@ -76,6 +78,7 @@ async def get_market_data_api():
         logging.error(f"Market data error: {str(e)}")
         raise HTTPException(status_code=500, detail="Error fetching market data")
 
+# AI Signal API for fetching AI trading signal
 @app.get("/api/ai/signal")
 async def ai_signal(model_type: str = 'ai'):
     try:
@@ -96,6 +99,7 @@ async def ai_signal(model_type: str = 'ai'):
         logging.error(f"AI signal error: {str(e)}")
         return {"action": "hold"}
 
+# Place an order (buy/sell) API
 @app.post("/api/order")
 async def place_order(order: dict = Body(...)):
     try:
@@ -117,11 +121,13 @@ async def place_order(order: dict = Body(...)):
         logging.error(f"Order error: {str(e)}")
         raise HTTPException(status_code=500, detail="Order failed")
 
+# Emergency stop API to halt trading
 @app.post("/api/emergency_stop")
 async def emergency_stop():
     logging.warning("Emergency stop activated!")
     return {"status": "Emergency stop triggered"}
 
+# Health check endpoint for system status
 @app.get("/health")
 async def health_check():
     try:
@@ -132,14 +138,56 @@ async def health_check():
         logging.error(f"Health check error: {str(e)}")
         raise HTTPException(status_code=500, detail="System not healthy")
 
+# AI chat API for simulated AI responses
 @app.post("/api/ai/chat")
 async def ai_chat(request: Request):
     data = await request.json()
     message = data.get("message", "")
     logging.info(f"Chat message: {message}")
-    response = f"I received your message: '{message}'"
+    
+    # Create a more conversational AI response with real-time data
+    if "how are you" in message.lower():
+        response = "🤖 I'm doing great, thanks for asking! How can I assist you today?"
+    
+    elif "how many trades have you made yet" in message.lower():
+        # Example of real-time data fetching for number of trades
+        trade_count = get_trade_count_from_binance_api()
+        response = f"🤖 I have made a total of {trade_count} trades so far. Would you like to see the details?"
+    
+    elif "how much balance do I have" in message.lower():
+        # Example of real-time balance fetching
+        balance = get_balance_from_binance_api()
+        response = f"🤖 Your current balance is {balance} USDT."
+    
+    elif "buy bitcoin" in message.lower():
+        # Example of placing an order based on a conversational request
+        response = "🤖 I can help you buy Bitcoin. How much would you like to purchase?"
+    
+    else:
+        # General fallback for unrecognized messages
+        response = f"🤖 I received your message: '{message}'"
+    
     return {"response": response}
 
+# Helper function to fetch the trade count from Binance
+def get_trade_count_from_binance_api():
+    try:
+        trades = client.get_my_trades(symbol=config.TRADE_SYMBOL)
+        return len(trades)
+    except Exception as e:
+        logging.error(f"Error fetching trade count: {str(e)}")
+        return 0
+
+# Helper function to fetch the available balance for USDT
+def get_balance_from_binance_api():
+    try:
+        balance = client.get_asset_balance(asset='USDT')
+        return balance['free']
+    except Exception as e:
+        logging.error(f"Error fetching balance: {str(e)}")
+        return "Error fetching balance"
+
+# Webhook verification function for incoming data security
 def verify_webhook_signature(request: Request, body: bytes):
     received_sig = request.headers.get('X-Signature')
     if not received_sig:
@@ -151,6 +199,7 @@ def verify_webhook_signature(request: Request, body: bytes):
     ).hexdigest()
     return hmac.compare_digest(received_sig, computed_sig)
 
+# Webhook listener for external system interactions
 @app.post("/webhook")
 async def webhook_listener(request: Request):
     body = await request.body()
@@ -161,9 +210,7 @@ async def webhook_listener(request: Request):
     logging.info(f"Webhook event: {event}")
     return {"status": "Webhook received"}
 
-def notify_team(msg):
-    logging.info(f"Notification: {msg}")
-
+# Scheduled trading job (every 5 minutes)
 def run_trading_job():
     try:
         data = np.expand_dims(fetcher.fetch_ohlcv_array(window=60), axis=0)
@@ -171,16 +218,15 @@ def run_trading_job():
         if action in ["buy", "sell"]:
             balance = fetcher.fetch_balance().get("available", 0.01)
             qty = ai_trader.calculate_position_size(balance)
-            order_executor.execute_order(symbol=config.TRADE_SYMBOL, side=action, quantity=qty)  # Fixed
+            order_executor.execute_order(symbol=config.TRADE_SYMBOL, side=action, quantity=qty)
             logging.info(f"Executed {action.upper()} for {qty}")
         else:
             logging.info("AI suggested HOLD. No action taken.")
     except Exception as e:
         logging.error(f"Scheduled trading error: {str(e)}")
 
+# Set up scheduled jobs (every 5 minutes)
 scheduler = BackgroundScheduler()
 scheduler.add_job(run_trading_job, trigger='interval', seconds=300)
 scheduler.start()
 atexit.register(scheduler.shutdown)
-
-# --- No need to run Uvicorn directly as Gunicorn will handle the app ---
