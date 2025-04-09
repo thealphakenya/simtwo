@@ -183,9 +183,4 @@ scheduler.add_job(run_trading_job, trigger='interval', seconds=300)
 scheduler.start()
 atexit.register(scheduler.shutdown)
 
-# Run via Uvicorn if directly executed
-if __name__ == '__main__':
-    import uvicorn
-    port = int(os.getenv("PORT", 5000))
-    logging.info("Starting FastAPI app on port %s", port)
-    uvicorn.run(app, host="0.0.0.0", port=port)
+# --- No need to run Uvicorn directly as Gunicorn will handle the app ---
