@@ -171,7 +171,7 @@ def run_trading_job():
         if action in ["buy", "sell"]:
             balance = fetcher.fetch_balance().get("available", 0.01)
             qty = ai_trader.calculate_position_size(balance)
-            execute_order(symbol=config.TRADE_SYMBOL, side=action, quantity=qty)
+            order_executor.execute_order(symbol=config.TRADE_SYMBOL, side=action, quantity=qty)  # Fixed
             logging.info(f"Executed {action.upper()} for {qty}")
         else:
             logging.info("AI suggested HOLD. No action taken.")

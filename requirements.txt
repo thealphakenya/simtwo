@@ -1,8 +1,6 @@
 # === Core Web Frameworks ===
 fastapi
 uvicorn[standard]
-flask
-flask-socketio
 gunicorn
 
 # === ML & Data Science ===
@@ -37,13 +35,7 @@ APScheduler
 # === FastAPI Extras ===
 python-multipart
 python-dotenv
-
-# === Flask Extras ===
-click
-itsdangerous
-jinja2
-MarkupSafe
-werkzeug
+pydantic
 
 # === Utility Libraries ===
 python-dateutil
