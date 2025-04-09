@@ -74,8 +74,7 @@ rl_trader = ReinforcementLearning()
 app = FastAPI()
 
 # ✅ Serve static files directly from frontend/
-app.mount("/css", StaticFiles(directory="frontend/css"), name="css")
-app.mount("/js", StaticFiles(directory="frontend/js"), name="js")
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
