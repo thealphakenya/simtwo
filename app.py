@@ -26,6 +26,11 @@ with contextlib.redirect_stderr(StringIO()):
 
 sys.path.append('/app/backend')
 
+<<<<<<< HEAD
+=======
+from backend.data import DataFetcher, get_market_data  # Importing DataFetcher and get_market_data
+
+>>>>>>> 6c21527 (Initial commit)
 class Config:
     API_KEY = os.getenv('BINANCE_API_KEY')
     API_SECRET = os.getenv('BINANCE_SECRET_KEY')
@@ -46,7 +51,10 @@ else:
 
 from backend.trading_logic.order_execution import OrderExecution, TradingLogic
 from training_logic.order_execution import execute_order
+<<<<<<< HEAD
 from data.data_fetcher import DataFetcher
+=======
+>>>>>>> 6c21527 (Initial commit)
 from backend.ai_models import TradingAI, ReinforcementLearning
 
 try:
@@ -55,9 +63,17 @@ except Exception as e:
     logging.error(f"Error initializing Binance Client: {str(e)}")
     raise
 
+<<<<<<< HEAD
 fetcher = DataFetcher(api_key=config.API_KEY, api_secret=config.API_SECRET, trade_symbol=config.TRADE_SYMBOL)
 order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SECRET)
 
+=======
+# Initialize DataFetcher and OrderExecution
+fetcher = DataFetcher(api_key=config.API_KEY, api_secret=config.API_SECRET, trade_symbol=config.TRADE_SYMBOL)
+order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SECRET)
+
+# Initialize AI and RL models
+>>>>>>> 6c21527 (Initial commit)
 ai_trader = TradingAI()
 rl_trader = ReinforcementLearning()
 
@@ -225,4 +241,8 @@ if __name__ == '__main__':
     import uvicorn
     port = int(os.getenv("PORT", 5000))
     logging.info("🚀 Starting FastAPI App")
+<<<<<<< HEAD
     uvicorn.run(app, host="0.0.0.0", port=port, debug=True)
+=======
+    uvicorn.run(app, host="0.0.0.0", port=port, debug=True)
+>>>>>>> 6c21527 (Initial commit)
