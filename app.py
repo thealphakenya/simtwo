@@ -6,7 +6,7 @@ from io import StringIO
 import hmac
 import hashlib
 from fastapi import FastAPI, Request, HTTPException, Body
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -73,12 +73,13 @@ rl_trader = ReinforcementLearning()
 
 app = FastAPI()
 
-app.mount("/static", StaticFiles(directory="frontend/build"), name="static")
+# ✅ Serve static files directly from frontend/
+app.mount("/css", StaticFiles(directory="frontend/css"), name="css")
+app.mount("/js", StaticFiles(directory="frontend/js"), name="js")
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
-    with open("frontend/build/index.html") as f:
-        return f.read()
+    return FileResponse("frontend/index.html")
 
 @app.get("/api/market_data")
 async def get_market_data_api():

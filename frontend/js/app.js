@@ -38,14 +38,31 @@ document.addEventListener("DOMContentLoaded", () => {
         const amount = parseFloat(orderAmount.value);
         const type = orderType.value;
 
-        // Demo only: Logging instead of real order
-        console.log(`Placing ${side.toUpperCase()} order: ${amount} ${type}`);
-        alert(`Pretend placing ${side.toUpperCase()} order: ${amount} ${type}`);
+        try {
+            const res = await fetch("/api/order", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ side, amount, type }),
+            });
+            const result = await res.json();
+            alert(`✅ ${result.status}`);
+        } catch (error) {
+            console.error("Error placing order", error);
+            alert("❌ Error placing order.");
+        }
     };
 
-    const emergencyStop = () => {
-        alert("Emergency stop activated (not yet implemented).");
-        // Here you'd add a real backend POST call to pause bot.
+    const emergencyStop = async () => {
+        try {
+            const res = await fetch("/api/emergency_stop", {
+                method: "POST",
+            });
+            const result = await res.json();
+            alert(result.status);
+        } catch (err) {
+            console.error("Emergency stop error", err);
+            alert("Failed to activate emergency stop.");
+        }
     };
 
     chatForm.addEventListener("submit", (e) => {
@@ -56,7 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
         chatBox.innerHTML += `<div><b>You:</b> ${message}</div>`;
         chatInput.value = "";
 
-        // Placeholder: Simulate response
+        // Placeholder AI response
         setTimeout(() => {
             chatBox.innerHTML += `<div><b>AI:</b> 🤖 Sorry, I don't understand yet.</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -67,9 +84,8 @@ document.addEventListener("DOMContentLoaded", () => {
     sellBtn.addEventListener("click", () => placeOrder("sell"));
     emergencyBtn.addEventListener("click", emergencyStop);
 
-    // Initial load
     fetchMarketData();
     fetchAISignal();
-    setInterval(fetchMarketData, 10000); // refresh every 10s
-    setInterval(fetchAISignal, 15000); // refresh every 15s
+    setInterval(fetchMarketData, 10000);
+    setInterval(fetchAISignal, 15000);
 });
