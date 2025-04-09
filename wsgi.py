@@ -1,7 +1,7 @@
 import sys
 import os
 
-# 📌 Ensure the app root and backend path are in the system path
+# Ensure the app root and backend path are in the system path
 app_root = os.path.abspath(os.path.dirname(__file__))
 if app_root not in sys.path:
     sys.path.insert(0, app_root)
@@ -11,8 +11,7 @@ backend_path = os.path.join(app_root, 'backend')
 if backend_path not in sys.path:
     sys.path.insert(0, backend_path)
 
-# 🚀 Import the FastAPI app from app.py
+# Import the FastAPI app from app.py
 from app import app  # Ensure that `app` is the FastAPI instance in `app.py`
 
-# To run the app with Gunicorn, the `app` variable from the `app.py` is used.
-# Gunicorn will look for `app` when starting the server, so ensure it's referenced correctly.
+# Gunicorn will look for `app` in this file to start the server.
