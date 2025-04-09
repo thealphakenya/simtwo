@@ -28,9 +28,11 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const res = await fetch("/api/ai/signal?model_type=ai");
             const data = await res.json();
-            aiStatusDiv.textContent = `AI Status: ${data.action.toUpperCase()}`;
+            // Force AI to be shown as ACTIVE regardless of backend decision
+            aiStatusDiv.textContent = `AI Status: ACTIVE - ${data.action?.toUpperCase() || 'MONITORING...'}`;
         } catch (err) {
             console.error("Error getting AI signal", err);
+            aiStatusDiv.textContent = "AI Status: ACTIVE - Monitoring...";
         }
     };
 
@@ -65,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    chatForm.addEventListener("submit", (e) => {
+    chatForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const message = chatInput.value.trim();
         if (!message) return;
@@ -73,11 +75,20 @@ document.addEventListener("DOMContentLoaded", () => {
         chatBox.innerHTML += `<div><b>You:</b> ${message}</div>`;
         chatInput.value = "";
 
-        // Placeholder AI response
-        setTimeout(() => {
-            chatBox.innerHTML += `<div><b>AI:</b> 🤖 Sorry, I don't understand yet.</div>`;
+        try {
+            const res = await fetch("/api/ai/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message }),
+            });
+            const data = await res.json();
+            chatBox.innerHTML += `<div><b>AI:</b> 🤖 ${data.response}</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
-        }, 1000);
+        } catch (err) {
+            chatBox.innerHTML += `<div><b>AI:</b> 🤖 Sorry, something went wrong.</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+            console.error("Chat error", err);
+        }
     });
 
     buyBtn.addEventListener("click", () => placeOrder("buy"));
