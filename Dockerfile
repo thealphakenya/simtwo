@@ -13,7 +13,6 @@ RUN apt-get update && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-
 RUN python -m pip install --no-cache-dir --upgrade pip && \
     python -m pip install --no-cache-dir -r requirements.txt
 
@@ -21,4 +20,5 @@ RUN find /app -name '__pycache__' -type d -exec rm -r {} +
 
 EXPOSE 5000
 
+# Start the FastAPI app with Gunicorn + Uvicorn worker
 CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:5000", "app:app"]
