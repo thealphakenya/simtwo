@@ -1,4 +1,3 @@
-import os
 from binance.client import Client
 import pandas as pd
 import logging
@@ -7,22 +6,20 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 class DataFetcher:
-    def __init__(self, api_key=None, api_secret=None, trade_symbol=None):
-        # Use the passed API key/secret or fallback to environment variables
-        self.api_key = api_key or os.getenv('API_KEY')
-        self.api_secret = api_secret or os.getenv('API_SECRET')
-        self.trade_symbol = trade_symbol  # Default trade symbol can be passed here
+    def __init__(self, api_key, api_secret, trade_symbol=None):
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.trade_symbol = trade_symbol
         
-        # Ensure we have API keys before initializing the client
         if not self.api_key or not self.api_secret:
             logging.error("API Key or Secret is missing!")
             raise ValueError("API key and secret must be provided")
 
         logging.info("Initializing Binance Client with provided API keys.")
-        self.client = Client(self.api_key, self.api_secret)  # Initialize the Binance client with the API credentials
+        self.client = Client(self.api_key, self.api_secret)
 
     def fetch_ohlcv_data(self, symbol=None, interval='1h', limit=100):
-        symbol = symbol or self.trade_symbol  # Use the trade symbol or fallback to instance variable
+        symbol = symbol or self.trade_symbol
         logging.debug(f"Fetching OHLCV data for symbol: {symbol} with interval: {interval}")
         
         try:
@@ -44,7 +41,7 @@ class DataFetcher:
             raise
 
     def fetch_order_book(self, symbol=None):
-        symbol = symbol or self.trade_symbol  # Use the trade symbol or fallback to instance variable
+        symbol = symbol or self.trade_symbol
         logging.debug(f"Fetching order book for symbol: {symbol}")
         try:
             order_book = self.client.get_order_book(symbol=symbol)
@@ -54,7 +51,7 @@ class DataFetcher:
             raise
 
     def fetch_ticker(self, symbol=None):
-        symbol = symbol or self.trade_symbol  # Use the trade symbol or fallback to instance variable
+        symbol = symbol or self.trade_symbol
         logging.debug(f"Fetching ticker for symbol: {symbol}")
         try:
             ticker = self.client.get_symbol_ticker(symbol=symbol)
@@ -72,7 +69,7 @@ class DataFetcher:
             logging.error(f"Error fetching balance: {str(e)}")
             raise
 
-# ✅ Convenience wrapper for quick access in app.py
+# ✅ Convenience wrapper for quick access
 def get_market_data(api_key, api_secret, trade_symbol=None):
-    fetcher = DataFetcher(api_key=api_key, api_secret=api_secret, trade_symbol=trade_symbol)  # Initialize using provided API keys
+    fetcher = DataFetcher(api_key=api_key, api_secret=api_secret, trade_symbol=trade_symbol)
     return fetcher.fetch_ticker(trade_symbol)

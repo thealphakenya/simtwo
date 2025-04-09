@@ -26,7 +26,7 @@ with contextlib.redirect_stderr(StringIO()):
 
 sys.path.append('/app/backend')
 
-from backend.data import DataFetcher, get_market_data  # Importing DataFetcher and get_market_data
+from backend.data import DataFetcher, get_market_data
 from backend.trading_logic.order_execution import OrderExecution, TradingLogic
 from backend.ai_models import TradingAI, ReinforcementLearning
 
@@ -41,23 +41,31 @@ class Config:
 config = Config()
 
 logging.basicConfig(level=logging.DEBUG)
-API_KEY = config.API_KEY
-API_SECRET = config.API_SECRET
 
-if not API_KEY or not API_SECRET:
-    logging.error("API Key or Secret is missing!")
+if not config.API_KEY or not config.API_SECRET:
+    logging.error("❗️API_KEY or API_SECRET not found in environment variables!")
+    raise ValueError("API_KEY or API_SECRET must be set in Railway environment variables.")
 else:
-    logging.debug(f"API Key: {API_KEY}, API Secret: {API_SECRET}")
+    logging.debug("✅ Binance API credentials loaded from environment.")
 
+# Initialize Binance client
 try:
     client = Client(config.API_KEY, config.API_SECRET)
 except Exception as e:
-    logging.error(f"Error initializing Binance Client: {str(e)}")
+    logging.error(f"❌ Error initializing Binance Client: {str(e)}")
     raise
 
 # Initialize DataFetcher and OrderExecution
-fetcher = DataFetcher(api_key=config.API_KEY, api_secret=config.API_SECRET, trade_symbol=config.TRADE_SYMBOL)
-order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SECRET)
+fetcher = DataFetcher(
+    api_key=config.API_KEY,
+    api_secret=config.API_SECRET,
+    trade_symbol=config.TRADE_SYMBOL
+)
+
+order_executor = OrderExecution(
+    api_key=config.API_KEY,
+    api_secret=config.API_SECRET
+)
 
 # Initialize AI and RL models
 ai_trader = TradingAI()
@@ -76,7 +84,11 @@ async def get_index():
 async def get_market_data_api():
     logging.debug("Fetching market data for %s", config.TRADE_SYMBOL)
     try:
-        data = fetcher.fetch_ticker(config.TRADE_SYMBOL)
+        data = get_market_data(
+            api_key=config.API_KEY,
+            api_secret=config.API_SECRET,
+            trade_symbol=config.TRADE_SYMBOL
+        )
         return data
     except Exception as e:
         logging.error("Error fetching market data: %s", str(e))
@@ -162,13 +174,11 @@ def notify_team(message):
 @app.post("/api/order")
 async def place_order(order: dict = Body(...)):
     logging.info(f"📦 Received order: {order}")
-    # Simulate order (replace with real execution if needed)
     return {"status": "Order received", "order": order}
 
 @app.post("/api/emergency_stop")
 async def emergency_stop():
     logging.warning("🚨 Emergency stop triggered!")
-    # Simulate emergency halt logic here
     return {"status": "Emergency stop activated"}
 
 @app.get("/health")
