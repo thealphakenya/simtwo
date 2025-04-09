@@ -1,6 +1,7 @@
+# backend/data/data.py
+import logging
 from binance.client import Client
 import pandas as pd
-import logging
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
