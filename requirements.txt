@@ -44,3 +44,6 @@ idna
 certifi
 charset-normalizer
 importlib-metadata; python_version < "3.8"
+
+# === OpenAI Integration ===
+openai
