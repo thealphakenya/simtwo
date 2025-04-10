@@ -1,196 +1,146 @@
-let selectedAccount = "virtual";
-let autoTradeButton = document.getElementById("autoTradeButton");
-let accountBalance = document.getElementById("balance");
-let orderList = document.getElementById("orderList");
-let chatMessages = document.getElementById("chat-box");
-let chatInput = document.getElementById("chat-input");
-let sendChatButton = document.getElementById("send-chat");
-let symbolDiv = document.getElementById("current-symbol");
-let priceDiv = document.getElementById("current-price");
-let pairDiv = document.getElementById("current-trading-pair");
-let aiStatusDiv = document.getElementById("ai-status");
-let buyBtn = document.getElementById("place-buy-order");
-let sellBtn = document.getElementById("place-sell-order");
-let emergencyBtn = document.getElementById("emergency-stop-btn");
-let orderAmount = document.getElementById("order-amount");
-let orderType = document.getElementById("order-type");
-let chatForm = document.getElementById("chat-form");
-
-// Loading Spinner Functions
-function showLoading() {
-    document.getElementById('loading').style.display = 'block';
-}
-
-function hideLoading() {
-    document.getElementById('loading').style.display = 'none';
-}
-
-// Fetch Market Data with Loading Spinner
-async function fetchMarketData() {
-    showLoading();
-    try {
-        const res = await fetch("/api/market_data");
-        const data = await res.json();
-        symbolDiv.textContent = `Symbol: ${data.symbol}`;
-        priceDiv.textContent = `Price: $${data.price}`;
-        pairDiv.textContent = `Pair: ${data.symbol}`;
-    } catch (err) {
-        console.error("Error fetching market data", err);
-    } finally {
-        hideLoading();
-    }
-}
-
-// Fetch AI Signal with Loading Spinner
-async function fetchAISignal() {
-    showLoading();
-    try {
-        const res = await fetch("/api/ai/signal?model_type=ai");
-        const data = await res.json();
-        aiStatusDiv.textContent = `AI Status: ACTIVE - ${data.action?.toUpperCase() || 'MONITORING...'}`;
-    } catch (err) {
-        console.error("Error getting AI signal", err);
-        aiStatusDiv.textContent = "AI Status: ACTIVE - Monitoring...";
-    } finally {
-        hideLoading();
-    }
-}
-
-// Update Account Balance
-function updateAccountBalance() {
-    showLoading();
-    fetch("/api/account")
-        .then(response => response.json())
-        .then(data => {
-            selectedAccount = data.account;
-            accountBalance.textContent = `Balance: $${data.balance.toFixed(2)}`;
-        })
-        .finally(() => hideLoading());
-}
-
-// Switch Account
-function switchAccount(accountType) {
-    showLoading();
-    fetch("/api/select_account", {
-        method: "POST",
-        body: JSON.stringify({ account_type: accountType }),
-        headers: { "Content-Type": "application/json" }
-    }).then(response => response.json())
-      .then(data => {
-          updateAccountBalance();
-      })
-      .finally(() => hideLoading());
-}
-
-// Start Auto Trading
-function startAutoTrading() {
-    autoTradeButton.style.backgroundColor = "green";
-    autoTradeButton.textContent = "Auto Trading Active";
-    setInterval(() => {
-        showLoading();
-        fetch("/api/order", { 
-            method: "POST", 
-            body: JSON.stringify({ side: "buy", amount: 0.01 }), 
-            headers: { "Content-Type": "application/json" } 
-        })
-            .then(response => response.json())
-            .then(data => {
-                let tradeRow = document.createElement("li");
-                tradeRow.textContent = `${data.status} - ${selectedAccount} Account`;
-                orderList.appendChild(tradeRow);
-                updateAccountBalance();
-            })
-            .finally(() => hideLoading());
-    }, 5000); // Auto trading every 5 seconds
-}
-
-// Send Chat Message
-function sendChatMessage() {
-    const message = chatInput.value;
-    if (message.trim() === "") return;
-
-    // Display the user's message
-    chatMessages.innerHTML += `<div class="user-message">You: ${message}</div>`;
-
-    // Clear the input field
-    chatInput.value = '';
-
-    // Send the message to the AI backend
-    fetch("/api/ai/chat", {
-        method: "POST",
-        body: JSON.stringify({ message: message }),
-        headers: { "Content-Type": "application/json" }
-    })
-    .then(response => response.json())
-    .then(data => {
-        const aiResponse = data.response;
-        // Display the AI's response
-        chatMessages.innerHTML += `<div class="ai-message">AI: ${aiResponse}</div>`;
-        chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to the bottom
-    })
-    .catch(error => console.error("Error in AI chat:", error));
-}
-
-// Place Order
-async function placeOrder(side) {
-    const amount = parseFloat(orderAmount.value);
-    const type = orderType.value;
-
-    showLoading();
-    try {
-        const res = await fetch("/api/order", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ side, amount, type }),
-        });
-        const result = await res.json();
-        alert(`✅ ${result.status}`);
-    } catch (error) {
-        console.error("Error placing order", error);
-        alert("❌ Error placing order.");
-    } finally {
-        hideLoading();
-    }
-}
-
-// Emergency Stop
-async function emergencyStop() {
-    showLoading();
-    try {
-        const res = await fetch("/api/emergency_stop", {
-            method: "POST",
-        });
-        const result = await res.json();
-        alert(result.status);
-    } catch (err) {
-        console.error("Emergency stop error", err);
-        alert("Failed to activate emergency stop.");
-    } finally {
-        hideLoading();
-    }
-}
-
-// Initialize the dashboard
-document.addEventListener("DOMContentLoaded", () => {
-    // Initialize balances and symbols on page load
-    updateAccountBalance();
-    fetchMarketData();
-    fetchAISignal();
-
-    // Set intervals for fetching data
-    setInterval(fetchMarketData, 10000);  // Refresh market data every 10 seconds
-    setInterval(fetchAISignal, 15000);    // Refresh AI status every 15 seconds
-
-    // Event listeners
-    document.getElementById("virtualAccountBtn").addEventListener("click", () => switchAccount("virtual"));
-    document.getElementById("realAccountBtn").addEventListener("click", () => switchAccount("real"));
-    autoTradeButton.addEventListener("click", startAutoTrading);
-    buyBtn.addEventListener("click", () => placeOrder("buy"));
-    sellBtn.addEventListener("click", () => placeOrder("sell"));
-    emergencyBtn.addEventListener("click", emergencyStop);
-    
-    chatForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        sendChatMessage();
-    });
+document.getElementById("autoTradeButton").addEventListener("click", async () => {
+  try {
+    const res = await fetch("/api/auto_trade", { method: "POST" });
+    const data = await res.json();
+    alert(`Action: ${data.action.toUpperCase()} at predicted price $${data.predicted_price}`);
+  } catch (err) {
+    alert("Auto trade failed or not enough data.");
+    console.error(err);
+  }
 });
+
+let chart;
+let chartData = {
+  labels: [],
+  datasets: [{
+    label: 'BTC Price (USDT)',
+    borderColor: 'rgba(0,255,132,1)',
+    backgroundColor: 'rgba(0,255,132,0.2)',
+    data: [],
+    tension: 0.3
+  }]
+};
+
+function initChart() {
+  const ctx = document.getElementById('chart-canvas').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: chartData,
+    options: {
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: 'minute' },
+          title: { display: true, text: 'Time' }
+        },
+        y: {
+          title: { display: true, text: 'Price (USDT)' }
+        }
+      }
+    }
+  });
+}
+
+async function updateChart() {
+  try {
+    const response = await fetch('/api/market_data');
+    const data = await response.json();
+    const now = new Date();
+
+    chartData.labels.push(now);
+    chartData.datasets[0].data.push(data.price);
+
+    if (chartData.labels.length > 20) {
+      chartData.labels.shift();
+      chartData.datasets[0].data.shift();
+    }
+
+    chart.update();
+    document.getElementById('price').innerText = data.price.toFixed(2);
+    document.getElementById('symbol').innerText = data.symbol;
+  } catch (error) {
+    console.error('Price update failed:', error);
+  }
+}
+
+async function sendChat(message) {
+  try {
+    const response = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message })
+    });
+    const data = await response.json();
+    const box = document.getElementById('chat-box');
+    box.innerHTML += `<div class="user-msg">You: ${message}</div>`;
+    box.innerHTML += `<div class="ai-msg">AI: ${data.response}</div>`;
+    box.scrollTop = box.scrollHeight;
+  } catch (error) {
+    console.error('Chat error:', error);
+  }
+}
+
+async function placeOrder(side) {
+  const amount = parseFloat(document.getElementById('order-amount').value);
+  const orderType = document.getElementById('order-type').value;
+  if (!amount) return alert('Enter amount');
+
+  try {
+    const response = await fetch('/api/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ side, amount, type: orderType })
+    });
+    const result = await response.json();
+    alert(result.status || result.detail || 'Order placed');
+  } catch (error) {
+    console.error('Order failed:', error);
+  }
+}
+
+async function emergencyStop() {
+  try {
+    const response = await fetch('/api/emergency_stop', { method: 'POST' });
+    const result = await response.json();
+    alert(result.status || 'Emergency stop activated');
+  } catch (error) {
+    console.error('Emergency stop failed:', error);
+  }
+}
+
+// Account Switch
+document.getElementById('virtualAccountBtn').addEventListener('click', () => {
+  alert("Switched to Virtual Account");
+});
+document.getElementById('realAccountBtn').addEventListener('click', () => {
+  alert("Switched to Real Account");
+});
+
+// Buttons
+document.getElementById('place-buy-order').addEventListener('click', () => placeOrder('buy'));
+document.getElementById('place-sell-order').addEventListener('click', () => placeOrder('sell'));
+document.getElementById('emergency-stop-btn').addEventListener('click', emergencyStop);
+document.getElementById('autoTradeButton').addEventListener('click', async () => {
+  try {
+    const res = await fetch('/api/auto_trade', { method: 'POST' });
+    const result = await res.json();
+    alert(result.status || 'Auto trading started');
+  } catch (err) {
+    alert('Failed to start auto trading.');
+  }
+});
+
+// Chat Handler
+document.getElementById('chat-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('chat-input').value;
+  if (msg.trim()) {
+    sendChat(msg);
+    document.getElementById('chat-input').value = '';
+  }
+});
+
+// Init
+initChart();
+updateChart();
+setInterval(updateChart, 5000);

@@ -1,7 +1,7 @@
 import sys
 import os
 
-# Ensure the app root and backend path are in the system path
+# Ensure the app root is in the system path
 app_root = os.path.abspath(os.path.dirname(__file__))
 if app_root not in sys.path:
     sys.path.insert(0, app_root)
