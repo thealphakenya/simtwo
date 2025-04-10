@@ -101,6 +101,57 @@ class TransformerTradingModel(BaseTradingModel):
         super().__init__(time_steps, n_features, model)
 
 
+# --- Trading AI Class (Updated) ---
+class TradingAI:
+    def __init__(self, model=None):
+        self.model = model
+
+    def train_model(self, data, target, epochs=50, batch_size=32):
+        """
+        Train the model on provided data.
+        """
+        if self.model is None:
+            raise ValueError("Model is not initialized.")
+        
+        self.model.train(data, target, epochs, batch_size)
+
+    def predict_price(self, data):
+        """
+        Predict the price using the trained model.
+        """
+        if self.model is None:
+            raise ValueError("Model is not initialized.")
+        
+        return self.model.predict(data)
+
+    def save_model(self, file_path):
+        """
+        Save the trained model.
+        """
+        if self.model is None:
+            raise ValueError("Model is not initialized.")
+        
+        self.model.save_model(file_path)
+
+    def load_model(self, file_path):
+        """
+        Load a pre-trained model.
+        """
+        if self.model is None:
+            raise ValueError("Model is not initialized.")
+        
+        self.model.load_model(file_path)
+
+    def evaluate_model(self, data, target):
+        """
+        Evaluate model performance using mean squared error.
+        """
+        if self.model is None:
+            raise ValueError("Model is not initialized.")
+        
+        return self.model.evaluate(data, target)
+
+
 # --- Backtesting Evaluation ---
 def backtest_evaluation(model, historical_data, window_size=10):
     """
