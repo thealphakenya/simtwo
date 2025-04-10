@@ -18,7 +18,7 @@ from binance.client import Client
 import openai
 
 # Internal imports for AI model and trading logic
-from model import LSTMTradingModel
+from backend.ai_models.model import LSTMTradingModel  # Updated import path
 from backend.data import DataFetcher
 from backend.trading_logic.order_execution import OrderExecution
 
