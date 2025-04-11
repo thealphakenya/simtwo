@@ -5,222 +5,139 @@ from tensorflow.keras.layers import Dense, LSTM, GRU, Dropout, Input, LayerNorma
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
+import random
 import time
 from sklearn.metrics import mean_squared_error
-from sklearn.decomposition import PCA
+from collections import deque
 
-# --- Base class for common structure ---
-class BaseTradingModel:
-    def __init__(self, time_steps=10, n_features=10, model=None):
-        self.model = model
+# --- Reinforcement Learning Model ---
+class ReinforcementLearning:
+    def __init__(self, api_key, api_secret, time_steps=10, n_features=10):
+        self.api_key = api_key
+        self.api_secret = api_secret
         self.time_steps = time_steps
         self.n_features = n_features
         self.scaler = StandardScaler()
+        
+        # Simple Q-learning model or Deep Q Network (DQN)
+        self.model = self.build_model()
 
-    def train(self, data, target, epochs=50, batch_size=32):
-        """
-        Train the model on provided data.
-        """
-        # Scaling the features
-        X_train, X_val, y_train, y_val = train_test_split(data, target, test_size=0.2, random_state=42)
-        X_train_scaled = self.scaler.fit_transform(X_train)
-        X_val_scaled = self.scaler.transform(X_val)
+        # Experience replay buffers
+        self.memory = deque(maxlen=2000)
+        self.gamma = 0.95  # Discount factor for future rewards
+        self.epsilon = 1.0  # Exploration rate
+        self.epsilon_min = 0.01
+        self.epsilon_decay = 0.995
+        self.batch_size = 32
 
-        self.model.fit(X_train_scaled, y_train, epochs=epochs, batch_size=batch_size, validation_data=(X_val_scaled, y_val))
-
-    def predict(self, data):
-        """
-        Make predictions using the trained model.
-        """
-        data_scaled = self.scaler.transform(data)
-        return self.model.predict(data_scaled)
-
-    def save_model(self, file_path):
-        """
-        Save the trained model to a file.
-        """
-        self.model.save(file_path)
-
-    def load_model(self, file_path):
-        """
-        Load a trained model from a file.
-        """
-        self.model = tf.keras.models.load_model(file_path)
-
-    def evaluate(self, data, target):
-        """
-        Evaluate the model on validation or test set.
-        """
-        data_scaled = self.scaler.transform(data)
-        y_pred = self.model.predict(data_scaled)
-        mse = mean_squared_error(target, y_pred)
-        return mse
-
-
-# --- LSTM Model ---
-class LSTMTradingModel(BaseTradingModel):
-    def __init__(self, time_steps=10, n_features=10):
+    def build_model(self):
         model = Sequential([
-            LSTM(64, input_shape=(time_steps, n_features), activation='relu', return_sequences=True),
+            Dense(64, input_dim=self.n_features * self.time_steps, activation='relu'),
             Dropout(0.2),
-            LSTM(32, activation='relu'),
+            Dense(64, activation='relu'),
             Dropout(0.2),
             Dense(1, activation='linear')
         ])
         model.compile(optimizer='adam', loss='mean_squared_error')
-        super().__init__(time_steps, n_features, model)
+        return model
 
+    def predict(self, state):
+        """
+        Predict the next action (buy, hold, or sell) based on the current state.
+        """
+        state = self.scaler.transform(state.reshape(1, -1))  # Scale input features
+        return self.model.predict(state)[0][0]  # Output of the model is the predicted value
 
-# --- GRU Model ---
-class GRUTradingModel(BaseTradingModel):
-    def __init__(self, time_steps=10, n_features=10):
-        model = Sequential([
-            GRU(64, input_shape=(time_steps, n_features), activation='relu', return_sequences=True),
-            Dropout(0.2),
-            GRU(32, activation='relu'),
-            Dropout(0.2),
-            Dense(1, activation='linear')
-        ])
-        model.compile(optimizer='adam', loss='mean_squared_error')
-        super().__init__(time_steps, n_features, model)
+    def remember(self, state, action, reward, next_state, done):
+        """
+        Store the experience (state, action, reward, next_state, done) in memory.
+        """
+        self.memory.append((state, action, reward, next_state, done))
 
+    def act(self, state):
+        """
+        Choose an action based on epsilon-greedy policy.
+        Exploration vs Exploitation.
+        """
+        if np.random.rand() <= self.epsilon:
+            # Random action (exploration)
+            return random.choice([0, 1, 2])  # 0: sell, 1: hold, 2: buy
+        else:
+            # Action from model prediction (exploitation)
+            return self.predict(state)
 
-# --- Transformer Model ---
-class TransformerTradingModel(BaseTradingModel):
-    def __init__(self, time_steps=10, n_features=10):
-        inputs = Input(shape=(time_steps, n_features))
-        x = MultiHeadAttention(num_heads=4, key_dim=64)(inputs, inputs)
-        x = LayerNormalization()(x)
-        x = GlobalAveragePooling1D()(x)
-        x = Dense(32, activation='relu')(x)
-        x = Dropout(0.2)(x)
-        output = Dense(1, activation='linear')(x)
+    def replay(self):
+        """
+        Sample a batch of experiences from memory and train the model.
+        """
+        if len(self.memory) < self.batch_size:
+            return
 
-        model = Model(inputs=inputs, outputs=output)
-        model.compile(optimizer='adam', loss='mean_squared_error')
-        super().__init__(time_steps, n_features, model)
+        # Sample a batch of experiences
+        minibatch = random.sample(self.memory, self.batch_size)
+        
+        for state, action, reward, next_state, done in minibatch:
+            target = reward
+            if not done:
+                target += self.gamma * self.model.predict(self.scaler.transform(next_state.reshape(1, -1)))[0][0]
 
+            # Train the model with the updated target
+            state = self.scaler.transform(state.reshape(1, -1))
+            self.model.fit(state, np.array([target]), epochs=1, verbose=0)
 
-# --- Trading AI Class (Updated) ---
-class TradingAI:
-    def __init__(self, model=None):
-        self.model = model
+        # Decay epsilon for exploration-exploitation balance
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
 
     def train_model(self, data, target, epochs=50, batch_size=32):
         """
-        Train the model on provided data.
+        Train the reinforcement learning model on provided data.
         """
-        if self.model is None:
-            raise ValueError("Model is not initialized.")
-        
-        self.model.train(data, target, epochs, batch_size)
+        # Initialize experience replay and model
+        for e in range(epochs):
+            for i in range(0, len(data), batch_size):
+                state = data[i:i+batch_size]
+                next_state = data[i+1:i+batch_size+1] if i+1 < len(data) else state
 
-    def predict_price(self, data):
+                # Simulate some action (buy, sell, hold) and get the reward
+                action = self.act(state)
+                reward = self.calculate_reward(action, target[i])  # Reward calculation can be adjusted
+                done = True if i + 1 >= len(data) else False
+
+                # Store experience in memory
+                self.remember(state, action, reward, next_state, done)
+
+                # Train on the replay buffer
+                self.replay()
+
+    def calculate_reward(self, action, actual_price):
         """
-        Predict the price using the trained model.
+        Calculate reward based on the action taken.
         """
-        if self.model is None:
-            raise ValueError("Model is not initialized.")
-        
-        return self.model.predict(data)
-
-    def save_model(self, file_path):
-        """
-        Save the trained model.
-        """
-        if self.model is None:
-            raise ValueError("Model is not initialized.")
-        
-        self.model.save_model(file_path)
-
-    def load_model(self, file_path):
-        """
-        Load a pre-trained model.
-        """
-        if self.model is None:
-            raise ValueError("Model is not initialized.")
-        
-        self.model.load_model(file_path)
-
-    def evaluate_model(self, data, target):
-        """
-        Evaluate model performance using mean squared error.
-        """
-        if self.model is None:
-            raise ValueError("Model is not initialized.")
-        
-        return self.model.evaluate(data, target)
+        reward = 0
+        if action == 2:  # Buy
+            reward = 1 if actual_price > 30000 else -1  # Placeholder condition
+        elif action == 0:  # Sell
+            reward = 1 if actual_price < 30000 else -1
+        return reward
 
 
-# --- Backtesting Evaluation ---
-def backtest_evaluation(model, historical_data, window_size=10):
-    """
-    Evaluate the model using a backtesting approach.
-    """
-    # Use the model to predict based on historical data
-    predictions = []
-    actual = []
-    for i in range(window_size, len(historical_data)):
-        train_data = historical_data[i - window_size:i]
-        test_data = historical_data[i]
-        prediction = model.predict(train_data.reshape(1, window_size, -1))  # 3D array: [samples, time_steps, features]
-        predictions.append(prediction)
-        actual.append(test_data)
-    
-    # Calculate the Mean Squared Error (MSE) between predictions and actual values
-    mse = mean_squared_error(actual, predictions)
-    return mse
-
-
-# --- Auto-Training with Drift Detection ---
-def detect_drift(previous_model, new_data, threshold=0.05):
-    """
-    Detect drift in model performance and decide if retraining is required.
-    If the performance drops below the threshold, retrain the model.
-    """
-    # Evaluate model performance on new data
-    previous_predictions = previous_model.predict(new_data)
-    previous_model_performance = mean_squared_error(new_data['target'], previous_predictions)
-    
-    # If drift is detected (e.g., performance drops), retrain the model
-    if previous_model_performance > threshold:
-        return True
-    return False
-
-def auto_train(model, data, target, model_file='trading_model.h5', retrain_interval=3600):
-    """
-    Train the model periodically (every `retrain_interval` seconds).
-    """
-    while True:
-        # Train the model if it’s the time to do so
-        model.train(data, target)
-        model.save_model(model_file)
-        
-        # Wait for the next training cycle
-        time.sleep(retrain_interval)  # wait for `retrain_interval` seconds before retraining
-
-
-# --- Example of usage ---
+# --- Example Usage ---
 if __name__ == "__main__":
-    # Load your data (replace with actual data loading)
-    historical_data = pd.read_csv("historical_data.csv")  # Example data loading
-    X = historical_data.drop(columns=['target'])  # Example features (e.g., price, indicators)
-    y = historical_data['target']  # Target variable (e.g., future price)
+    # Simulate the data (replace with real data)
+    data = np.random.randn(1000, 10)  # 1000 samples, 10 features (random data for example)
+    target = np.random.randn(1000)  # Target variable (random)
 
-    # Initialize model
-    trading_model = LSTMTradingModel(time_steps=10, n_features=X.shape[1])
+    # Initialize the reinforcement learning model
+    rl_model = ReinforcementLearning(api_key="your_api_key", api_secret="your_api_secret")
 
-    # Train model
-    trading_model.train(X, y, epochs=50, batch_size=32)
+    # Train the model
+    rl_model.train_model(data, target, epochs=50)
 
-    # Backtesting evaluation
-    mse = backtest_evaluation(trading_model, X)
-    print(f"Backtesting MSE: {mse}")
+    # Simulate a prediction for a given state
+    state = np.random.randn(10)  # Example state
+    action = rl_model.act(state)
+    print(f"Predicted action: {action}")
 
-    # Detect drift and retrain if necessary
-    if detect_drift(trading_model, X):
-        print("Model drift detected. Retraining...")
-        trading_model.train(X, y, epochs=50, batch_size=32)
-    
-    # Save the model
-    trading_model.save_model('trading_model.h5')
+    # Save the trained model
+    rl_model.model.save('reinforcement_model.h5')
