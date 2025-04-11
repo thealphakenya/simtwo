@@ -12,8 +12,8 @@ from backend.victorq.neutralizer import TradingHelper  # Shared logic
 from .logic import TradingLogic  # Use direct relative import to avoid circular import
 
 class OrderExecution:
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, api_key, api_secret):
+        self.client = Client(api_key, api_secret)
         self.logic = TradingLogic()
         logging.basicConfig(level=logging.INFO)
 
