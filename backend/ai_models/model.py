@@ -1,14 +1,12 @@
+# backend/ai_models/model.py
+
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import Dense, LSTM, GRU, Dropout, Input, LayerNormalization, MultiHeadAttention, GlobalAveragePooling1D
-from sklearn.model_selection import train_test_split
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout
 from sklearn.preprocessing import StandardScaler
-import pandas as pd
-import random
-import time
-from sklearn.metrics import mean_squared_error
 from collections import deque
+import random
 
 # --- Reinforcement Learning Model ---
 class ReinforcementLearning:
@@ -122,22 +120,58 @@ class ReinforcementLearning:
         return reward
 
 
-# --- Example Usage ---
-if __name__ == "__main__":
-    # Simulate the data (replace with real data)
-    data = np.random.randn(1000, 10)  # 1000 samples, 10 features (random data for example)
-    target = np.random.randn(1000)  # Target variable (random)
+# --- LSTM Trading Model ---
+class LSTMTradingModel:
+    def __init__(self, time_steps=10, n_features=10):
+        """
+        Initialize the LSTM model.
+        
+        Parameters:
+        time_steps (int): Number of time steps to look back for prediction
+        n_features (int): Number of features per time step (e.g., OHLC, indicators)
+        """
+        self.time_steps = time_steps
+        self.n_features = n_features
+        self.model = self.build_model()
 
-    # Initialize the reinforcement learning model
-    rl_model = ReinforcementLearning(api_key="your_api_key", api_secret="your_api_secret")
+    def build_model(self):
+        """
+        Build the LSTM model.
+        """
+        model = Sequential([
+            LSTM(50, input_shape=(self.time_steps, self.n_features), return_sequences=True),
+            Dropout(0.2),
+            LSTM(50, return_sequences=False),
+            Dropout(0.2),
+            Dense(1)  # Output a single value for prediction
+        ])
+        model.compile(optimizer='adam', loss='mean_squared_error')
+        return model
 
-    # Train the model
-    rl_model.train_model(data, target, epochs=50)
+    def train(self, X, y, epochs=10, batch_size=32):
+        """
+        Train the LSTM model.
+        
+        Parameters:
+        X (ndarray): Input features (time_steps x n_features)
+        y (ndarray): Target values to predict
+        epochs (int): Number of epochs to train the model
+        batch_size (int): Batch size for training
+        """
+        # Reshape X to 3D: [samples, time_steps, features]
+        X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
+        
+        self.model.fit(X, y, epochs=epochs, batch_size=batch_size)
 
-    # Simulate a prediction for a given state
-    state = np.random.randn(10)  # Example state
-    action = rl_model.act(state)
-    print(f"Predicted action: {action}")
-
-    # Save the trained model
-    rl_model.model.save('reinforcement_model.h5')
+    def predict(self, X):
+        """
+        Predict using the trained model.
+        
+        Parameters:
+        X (ndarray): Input features (time_steps x n_features)
+        
+        Returns:
+        ndarray: Predicted values
+        """
+        X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
+        return self.model.predict(X)

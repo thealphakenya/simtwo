@@ -1,3 +1,5 @@
+# backend/ai_models/__init__.py
+
 # Import the trading models (LSTM, GRU, Transformer) and the base model
 from .model import LSTMTradingModel, GRUTradingModel, TransformerTradingModel, BaseTradingModel, TradingAI, ReinforcementLearning
 

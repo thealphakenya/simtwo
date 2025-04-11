@@ -16,9 +16,10 @@ from fastapi.staticfiles import StaticFiles
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.client import Client
 import openai
+from sklearn.metrics import mean_squared_error
 
 # Internal imports for AI model and trading logic
-from backend.ai_models.model import LSTMTradingModel  # Updated import path
+from backend.ai_models import LSTMTradingModel, TradingAI  # Updated import path
 from backend.data import DataFetcher
 from backend.trading_logic.order_execution import OrderExecution
 
@@ -53,6 +54,35 @@ order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SE
 # Initialize LSTM model
 lstm_model = LSTMTradingModel(time_steps=10, n_features=10)
 
+# Initialize TradingAI model
+trading_ai = TradingAI(api_key=config.API_KEY, api_secret=config.API_SECRET)
+
+# Reinforcement Learning Model Implementation (Q-learning Example)
+class ReinforcementLearning:
+    def __init__(self, api_key, api_secret):
+        self.api_key = api_key
+        self.api_secret = api_secret
+        self.q_table = {}  # Simple Q-table to store Q-values
+
+    def get_q_value(self, state, action):
+        return self.q_table.get((state, action), 0.0)
+
+    def update_q_value(self, state, action, reward, next_state, learning_rate=0.1, discount_factor=0.9):
+        best_next_action = max([self.get_q_value(next_state, a) for a in ["buy", "sell"]])
+        new_q_value = self.get_q_value(state, action) + learning_rate * (reward + discount_factor * best_next_action - self.get_q_value(state, action))
+        self.q_table[(state, action)] = new_q_value
+
+    def predict(self, features):
+        # Simple logic to predict action based on Q-values
+        state = str(features)  # Convert features to string as state
+        action = max(["buy", "sell"], key=lambda a: self.get_q_value(state, a))
+        return [random.uniform(54000, 56000)]  # Placeholder logic for RL
+
+    def learn_from_results(self, action, reward, state, next_state):
+        self.update_q_value(state, action, reward, next_state)
+
+reinforcement_model = ReinforcementLearning(config.API_KEY, config.API_SECRET)
+
 # Global DataFrame to simulate market data storage
 df_data = pd.DataFrame(columns=[
     "open", "high", "low", "close", "volume", "rsi", "macd", "sma", "ema", "volatility", "target"
@@ -70,7 +100,9 @@ async def get_index():
 @app.get("/api/market_data")
 async def get_market_data_api():
     try:
-        simulated_price = round(random.uniform(54000, 56000), 2)
+        # Fetch real-time market data from Binance API
+        ticker = fetcher.fetch_ticker(fetcher.trade_symbol)
+        simulated_price = ticker.get("price", round(random.uniform(54000, 56000), 2))
         return {"symbol": fetcher.trade_symbol, "price": simulated_price, "time": datetime.utcnow().isoformat()}
     except Exception as e:
         logging.error(f"Market data error: {str(e)}")
@@ -89,7 +121,22 @@ async def train_on_startup():
     if len(df_data) > lstm_model.time_steps:
         lstm_model.train(df_data.drop(columns=['target']).values, df_data['target'].values)
 
-# Endpoint to handle auto trading
+# Model Drift Detection (Simple Accuracy Check)
+def check_model_drift(features, actual_price):
+    predictions = {
+        "lstm": lstm_model.predict(features),
+        "trading_ai": trading_ai.predict(features),
+        "rl": reinforcement_model.predict(features)
+    }
+    mse = {model: mean_squared_error([actual_price], pred) for model, pred in predictions.items()}
+    drift_threshold = 100  # Example threshold for model drift
+    for model, error in mse.items():
+        if error > drift_threshold:
+            logging.warning(f"{model} model drift detected with error {error:.2f}. Consider retraining.")
+            return True
+    return False
+
+# Endpoint to handle auto trading using multiple models (LSTM, TradingAI, ReinforcementLearning)
 @app.post("/api/auto_trade")
 async def auto_trade():
     global df_data
@@ -103,36 +150,57 @@ async def auto_trade():
     if len(df_data) <= lstm_model.time_steps:
         return JSONResponse(content={"message": "Not enough data yet"}, status_code=400)
 
-    # Prepare features and make prediction
+    # Prepare features and get predictions from all models
     features = df_data.drop(columns=['target']).values
-    prediction = lstm_model.predict(features)
-    predicted_price = float(prediction[0][0])
+    
+    # Check for model drift
+    if check_model_drift(features, new_data["close"]):
+        return JSONResponse(content={"message": "Model drift detected, consider retraining models."}, status_code=500)
+
+    # Get predictions from models
+    lstm_prediction = lstm_model.predict(features)
+    trading_ai_prediction = trading_ai.predict(features)
+    rl_prediction = reinforcement_model.predict(features)
+
+    # Combine predictions - here we use averaging as a simple ensemble method
+    final_predicted_price = (lstm_prediction[0][0] + trading_ai_prediction[0][0] + rl_prediction[0][0]) / 3
+
     actual_price = new_data["close"]
 
-    # Basic trading strategy
-    action = "buy" if predicted_price > actual_price else "sell"
-    return {"action": action, "predicted_price": predicted_price, "actual_price": actual_price}
+    # Basic trading strategy based on final predicted price
+    action = "buy" if final_predicted_price > actual_price else "sell"
+    
+    return {
+        "action": action,
+        "final_predicted_price": final_predicted_price,
+        "lstm_predicted_price": lstm_prediction[0][0],
+        "trading_ai_predicted_price": trading_ai_prediction[0][0],
+        "rl_predicted_price": rl_prediction[0][0],
+        "actual_price": actual_price
+    }
 
 # Background job for periodic trading execution (every 5 minutes)
 def run_trading_job():
     try:
         symbol = fetcher.trade_symbol
-        # Fetch market data for trading (Simulated in this example)
-        new_data = {
-            "open": 30000.6, "high": 30210.0, "low": 29920.0, "close": 30120.0, "volume": 105.75,
-            "rsi": 55.5, "macd": 0.4, "sma": 30130.0, "ema": 30095.5, "volatility": 0.006, "target": 30180.0
-        }
+        # Fetch real-time market data for trading
+        new_data = fetcher.fetch_ticker(symbol)
         df_data = pd.concat([df_data, pd.DataFrame([new_data])], ignore_index=True)
 
         if len(df_data) <= lstm_model.time_steps:
             return
 
         features = df_data.drop(columns=['target']).values
-        prediction = lstm_model.predict(features)
-        predicted_price = float(prediction[0][0])
-        actual_price = new_data["close"]
+        
+        # Get predictions from each model
+        lstm_prediction = lstm_model.predict(features)
+        trading_ai_prediction = trading_ai.predict(features)
+        rl_prediction = reinforcement_model.predict(features)
 
-        action = "buy" if predicted_price > actual_price else "sell"
+        # Combine predictions using averaging
+        final_predicted_price = (lstm_prediction[0][0] + trading_ai_prediction[0][0] + rl_prediction[0][0]) / 3
+        
+        action = "buy" if final_predicted_price > new_data["close"] else "sell"
         
         # Example order execution based on action
         balance = fetcher.fetch_balance().get("available", 0.01)  # Simulated balance
@@ -142,7 +210,7 @@ def run_trading_job():
         else:
             order_executor.execute_order(symbol, "sell", qty)
 
-        logging.info(f"Executed {action.upper()} order for {qty} {symbol} at predicted price {predicted_price}.")
+        logging.info(f"Executed {action.upper()} order for {qty} {symbol} at predicted price {final_predicted_price}.")
     except Exception as e:
         logging.error(f"Scheduled trading error: {str(e)}")
 
