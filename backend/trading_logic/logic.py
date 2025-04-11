@@ -1,28 +1,25 @@
-# Import necessary components for data, trading logic, AI models, and utils
-from .data import DataFetcher, get_market_data
-from .order_execution import OrderExecution
-from .trading_logic import TradingLogic
-from .ai_models import (
-    LSTMTradingModel,
-    GRUTradingModel,
-    TransformerTradingModel,
-    TradingAI,
-    ReinforcementLearning
-)
-from .utils import setup_logger, format_response, Timer, load_config
+import logging
+from ..ai_models.model import TradingAI  # Go up one level to access ai_models
 
-__all__ = [
-    "DataFetcher",
-    "get_market_data",
-    "OrderExecution",
-    "TradingLogic",
-    "LSTMTradingModel",
-    "GRUTradingModel",
-    "TransformerTradingModel",
-    "TradingAI",
-    "ReinforcementLearning",
-    "setup_logger",
-    "format_response",
-    "Timer",
-    "load_config",
-]
+class TradingLogic:
+    def __init__(self):
+        self.model = TradingAI()
+        logging.basicConfig(level=logging.INFO)
+
+    def analyze_market(self, market_data):
+        """
+        Use AI model to analyze market data and generate trading signals.
+        """
+        try:
+            signal = self.model.predict(market_data)
+            logging.info(f"Generated trading signal: {signal}")
+            return signal
+        except Exception as e:
+            logging.error(f"Failed to analyze market: {e}")
+            return {"error": str(e)}
+
+    def should_buy(self, signal):
+        return signal == "buy"
+
+    def should_sell(self, signal):
+        return signal == "sell"
