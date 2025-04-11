@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, GRU, Dense, Dropout, Transformer
+from tensorflow.keras.layers import LSTM, GRU, Dense, Dropout
 from sklearn.preprocessing import StandardScaler
 from collections import deque
 import random
