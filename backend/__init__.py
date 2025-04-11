@@ -7,7 +7,7 @@ from .ai_models import (
     TradingAI,
     ReinforcementLearning
 )
-from .utils import setup_logger, format_response, Timer, get_safe_position_size  # Removed Settings import
+from .utils import setup_logger, format_response, Timer, get_safe_position_size
 
 __all__ = [
     "DataFetcher",
@@ -22,5 +22,5 @@ __all__ = [
     "setup_logger",
     "format_response",
     "Timer",
-    "get_safe_position_size",  # Expose the updated function
+    "get_safe_position_size",
 ]
