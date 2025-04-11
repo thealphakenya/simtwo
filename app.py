@@ -2,21 +2,23 @@ import os
 import sys
 import json
 import logging
+import hmac
+import hashlib
 import atexit
-import random
 from datetime import datetime
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Header
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.client import Client
 import openai
 from sklearn.metrics import mean_squared_error
+from dotenv import load_dotenv
 
-# Internal imports
+# Backend Modules
 from backend import (
     DataFetcher,
     get_market_data,
@@ -27,195 +29,168 @@ from backend import (
     get_safe_position_size
 )
 
-# Initialize logging
+# Load environment variables
+load_dotenv()
+
+# Setup Logging
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
-# Debug print env vars
-binance_api_key = os.getenv('BINANCE_API_KEY')
-binance_secret_key = os.getenv('BINANCE_SECRET_KEY')
-openai_key = os.getenv('OPENAI_API_KEY')
-webhook_secret = os.getenv('WEBHOOK_SECRET', 'defaultsecret')
+# ===========================
+# 🔐 Pre-Config Check
+# ===========================
+API_KEY = os.getenv('BINANCE_API_KEY')
+API_SECRET = os.getenv('BINANCE_SECRET_KEY')
+TRADE_SYMBOL = 'BTCUSDT'
+TRADE_QUANTITY = 0.01
+WEBHOOK_SECRET = 'd9f1a3d47f83e25f92c97a912b3ac31c45ff98c87e2e98b03d78a12a78a813f5'
 
-logging.debug(f"BINANCE_API_KEY: {'SET' if binance_api_key else 'NOT SET'}")
-logging.debug(f"BINANCE_SECRET_KEY: {'SET' if binance_secret_key else 'NOT SET'}")
-logging.debug(f"OPENAI_API_KEY: {'SET' if openai_key else 'NOT SET'}")
-logging.debug(f"WEBHOOK_SECRET: {'SET' if webhook_secret else 'NOT SET'}")
+# Log API keys to verify if they're loaded correctly
+if not API_KEY or not API_SECRET:
+    logger.error("API Key or Secret is missing!")
+else:
+    logger.debug(f"API Key Loaded: Yes, API Secret Loaded: Yes")
 
-# FastAPI app
-app = FastAPI()
-
-# Configuration class
+# ===========================
+# 📦 Configuration
+# ===========================
 class Config:
-    API_KEY = binance_api_key
-    API_SECRET = binance_secret_key
-    TRADE_SYMBOL = 'BTCUSDT'
-    TRADE_QUANTITY = 0.01
-    WEBHOOK_SECRET = webhook_secret
-    OPENAI_API_KEY = openai_key
+    API_KEY = API_KEY
+    API_SECRET = API_SECRET
+    TRADE_SYMBOL = TRADE_SYMBOL
+    TRADE_QUANTITY = TRADE_QUANTITY
+    WEBHOOK_SECRET = WEBHOOK_SECRET
+    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 config = Config()
 openai.api_key = config.OPENAI_API_KEY
 
-if not config.API_KEY or not config.API_SECRET:
-    logging.error("Missing Binance API keys in environment!")
-    raise ValueError("API_KEY or API_SECRET not found.")
+# FastAPI App Init
+app = FastAPI()
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
-# Instantiate services
-client = Client(config.API_KEY, config.API_SECRET)
-fetcher = DataFetcher(api_key=config.API_KEY, api_secret=config.API_SECRET, trade_symbol=config.TRADE_SYMBOL)
-order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SECRET)
+# Log config values (omit actual secrets in logs)
+logger.debug(f"Config Loaded: TRADE_SYMBOL={config.TRADE_SYMBOL}, TRADE_QUANTITY={config.TRADE_QUANTITY}")
+logger.debug(f"API Key Loaded: {'Yes' if config.API_KEY else 'No'}, Secret Loaded: {'Yes' if config.API_SECRET else 'No'}")
+
+# Init Binance & Trading Components
+try:
+    client = Client(config.API_KEY, config.API_SECRET)
+    fetcher = DataFetcher(config.API_KEY, config.API_SECRET, config.TRADE_SYMBOL)
+    order_executor = OrderExecution(config.API_KEY, config.API_SECRET)
+except Exception as e:
+    logger.error(f"Error initializing Binance Client: {str(e)}")
+    raise
+
+# Models
 lstm_model = LSTMTradingModel(time_steps=10, n_features=10)
-trading_ai = TradingAI(api_key=config.API_KEY, api_secret=config.API_SECRET)
+trading_ai = TradingAI(config.API_KEY, config.API_SECRET)
 reinforcement_model = ReinforcementLearning(config.API_KEY, config.API_SECRET)
 
-# Initialize data
+# Global State
 df_data = pd.DataFrame(columns=[
     "open", "high", "low", "close", "volume",
     "rsi", "macd", "sma", "ema", "volatility", "target"
 ])
+ai_managed_preferences = True
+auto_trade_enabled = False
 
-# Static files
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
-
+# Home Route
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
     return FileResponse("frontend/index.html")
 
+# Market Data
 @app.get("/api/market_data")
 async def get_market_data_api():
     try:
-        ticker = fetcher.fetch_ticker(fetcher.trade_symbol)
-        simulated_price = ticker.get("price", round(random.uniform(54000, 56000), 2))
-        return {
-            "symbol": fetcher.trade_symbol,
-            "price": simulated_price,
-            "time": datetime.utcnow().isoformat()
-        }
+        data = fetcher.fetch_ticker(config.TRADE_SYMBOL)
+        return data
     except Exception as e:
-        logging.error(f"Market data error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error fetching market data")
+        logger.error(f"Error fetching market data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.on_event("startup")
-async def train_on_startup():
-    global df_data
-    for _ in range(50):
-        row = {
-            "open": 30000.5, "high": 30200.2, "low": 29900.1, "close": 30100.6,
-            "volume": 105.23, "rsi": 55.2, "macd": 0.3, "sma": 30120.1,
-            "ema": 30090.7, "volatility": 0.005, "target": 30150.0
-        }
-        df_data = pd.concat([df_data, pd.DataFrame([row])], ignore_index=True)
+# Webhook Signature Verification
+def verify_webhook_signature(request: Request, x_signature: str) -> bool:
+    raw_body = request._body
+    computed_sig = hmac.new(
+        key=config.WEBHOOK_SECRET.encode(),
+        msg=raw_body,
+        digestmod=hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(x_signature, computed_sig)
 
-    if len(df_data) > lstm_model.time_steps:
-        lstm_model.train(df_data.drop(columns=['target']).values, df_data['target'].values)
+@app.post("/webhook")
+async def webhook_listener(request: Request, x_signature: str = Header(None)):
+    if not x_signature:
+        logger.warning("Missing signature in webhook")
+        raise HTTPException(status_code=401, detail="Missing signature")
+    body = await request.body()
+    request._body = body  # Store raw body for signature
 
-def check_model_drift(features, actual_price):
-    predictions = {
-        "lstm": lstm_model.predict(features),
-        "trading_ai": trading_ai.predict(features),
-        "rl": reinforcement_model.predict(features)
-    }
-    mse = {model: mean_squared_error([actual_price], pred) for model, pred in predictions.items()}
-    drift_threshold = 100
-    for model, error in mse.items():
-        if error > drift_threshold:
-            logging.warning(f"{model} model drift detected with error {error:.2f}. Consider retraining.")
-            return True
-    return False
+    if not verify_webhook_signature(request, x_signature):
+        logger.warning("Webhook signature mismatch")
+        raise HTTPException(status_code=401, detail="Invalid signature")
 
-def process_and_execute_trade(new_data, models_to_use=None, confidence_threshold=50):
-    global df_data
-    df_data = pd.concat([df_data, pd.DataFrame([new_data])], ignore_index=True)
+    event = json.loads(body)
+    logger.info(f"Webhook Event: {event}")
 
-    if len(df_data) <= lstm_model.time_steps:
-        return {"message": "Not enough data yet"}, 400
+    return {"status": "Webhook received"}
 
-    features = df_data.drop(columns=['target']).values
-
-    if check_model_drift(features, new_data["close"]):
-        return {"message": "Model drift detected, consider retraining models."}, 500
-
-    predictions = {}
-    if models_to_use is None:
-        models_to_use = ["lstm", "trading_ai", "rl"]
-
-    if "lstm" in models_to_use:
-        predictions["lstm"] = lstm_model.predict(features)[0][0]
-    if "trading_ai" in models_to_use:
-        predictions["trading_ai"] = trading_ai.predict(features)[0][0]
-    if "rl" in models_to_use:
-        predictions["rl"] = reinforcement_model.predict(features)[0][0]
-
-    final_predicted_price = sum(predictions.values()) / len(predictions)
-    actual_price = new_data["close"]
-    confidence = abs(final_predicted_price - actual_price)
-
-    if confidence < confidence_threshold:
-        return {
-            "message": f"Confidence ({confidence:.2f}) below threshold ({confidence_threshold}). No trade executed."
-        }, 200
-
-    action = "buy" if final_predicted_price > actual_price else "sell"
-    balance = fetcher.fetch_balance().get("available", 1000)
-    qty = get_safe_position_size(balance)
-
-    order_executor.execute_trade(config.TRADE_SYMBOL, action, qty)
-
-    return {
-        "action": action,
-        "final_predicted_price": final_predicted_price,
-        "actual_price": actual_price,
-        "confidence": confidence,
-        **predictions
-    }, 200
-
-@app.post("/api/auto_trade")
-async def auto_trade():
-    new_data = {
-        "open": 30000.6, "high": 30210.0, "low": 29920.0, "close": 30120.0,
-        "volume": 105.75, "rsi": 55.5, "macd": 0.4, "sma": 30130.0,
-        "ema": 30095.5, "volatility": 0.006, "target": 30180.0
-    }
-    result, status = process_and_execute_trade(new_data)
-    return JSONResponse(content=result, status_code=status)
-
-def run_trading_job():
+# AI Prediction (stubbed)
+@app.post("/api/ai_predict")
+async def ai_predict(request: Request):
     try:
-        symbol = fetcher.trade_symbol
-        new_data = fetcher.fetch_ticker(symbol)
-        models_to_use = ["lstm", "trading_ai", "rl"]
-        confidence_threshold = 50
-
-        result, status = process_and_execute_trade(
-            new_data,
-            models_to_use=models_to_use,
-            confidence_threshold=confidence_threshold
-        )
-
-        if status == 200 and "action" in result:
-            logging.info(f"Scheduled trade: Executed {result['action'].upper()} order at {result['final_predicted_price']}")
+        market_data = await request.json()
+        if ai_managed_preferences:
+            prediction = reinforcement_model.predict(market_data)
         else:
-            logging.info(f"Scheduled trade skipped: {result.get('message')}")
+            prediction = trading_ai.predict(market_data)
+        return {"prediction": prediction.tolist()}
     except Exception as e:
-        logging.error(f"Scheduled trading error: {str(e)}")
+        logger.error(f"AI prediction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="AI prediction failed")
 
-# Schedule the trading job
-scheduler = BackgroundScheduler()
-scheduler.add_job(run_trading_job, trigger='interval', seconds=300)
-scheduler.start()
-atexit.register(scheduler.shutdown)
+# Preferences
+@app.post("/api/set_preferences")
+async def set_preferences(request: Request):
+    global ai_managed_preferences, auto_trade_enabled
+    data = await request.json()
+    ai_managed_preferences = data.get('ai_managed_preferences', ai_managed_preferences)
+    auto_trade_enabled = data.get('auto_trade_enabled', auto_trade_enabled)
+    logger.info(f"Preferences updated: AI={ai_managed_preferences}, Auto={auto_trade_enabled}")
+    return {"status": "Preferences updated", "ai_managed_preferences": ai_managed_preferences, "auto_trade_enabled": auto_trade_enabled}
 
+# Emergency Stop
 @app.post("/api/emergency_stop")
 async def emergency_stop():
-    logging.warning("Emergency stop activated!")
+    logger.warning("Emergency stop activated!")
+    scheduler.pause()
     return {"status": "Emergency stop triggered"}
 
+# Health Check
 @app.get("/health")
 async def health_check():
     try:
         client.ping()
-        fetcher.fetch_ticker(fetcher.trade_symbol)
+        fetcher.fetch_ticker(config.TRADE_SYMBOL)
         return {"status": "healthy", "message": "All systems go", "binance": "connected"}
     except Exception as e:
-        logging.error(f"Health check error: {str(e)}")
+        logger.error(f"Health check failed: {str(e)}")
         raise HTTPException(status_code=500, detail="System not healthy")
+
+# Trading Job
+def run_trading_job():
+    logger.info("Scheduled job: Checking market")
+    try:
+        ticker = fetcher.fetch_ticker(config.TRADE_SYMBOL)
+        logger.debug(f"Fetched ticker: {ticker}")
+        # Add actual trading logic here
+    except Exception as e:
+        logger.error(f"Trading job error: {str(e)}")
+
+# Scheduler Setup
+scheduler = BackgroundScheduler()
+scheduler.add_job(run_trading_job, trigger='interval', seconds=300)
+scheduler.start()
+atexit.register(lambda: scheduler.shutdown())
