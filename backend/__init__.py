@@ -1,7 +1,7 @@
-# Import necessary components for data, trading logic, AI models, and utils
+# backend/__init__.py
+
 from .data import DataFetcher, get_market_data
-from .order_execution import OrderExecution
-from .trading_logic import TradingLogic
+from .trading_logic import OrderExecution, TradingLogic
 from .ai_models import (
     LSTMTradingModel,
     GRUTradingModel,
@@ -15,14 +15,14 @@ __all__ = [
     "DataFetcher",
     "get_market_data",
     "OrderExecution",
-    "TradingLogic",
+    "TradingAI",
+    "ReinforcementLearning",
     "LSTMTradingModel",
     "GRUTradingModel",
     "TransformerTradingModel",
-    "TradingAI",
-    "ReinforcementLearning",
     "setup_logger",
     "format_response",
     "Timer",
     "load_config",
+    "TradingLogic"
 ]
