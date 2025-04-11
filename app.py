@@ -75,6 +75,7 @@ logger.debug(f"API Key Loaded: {'Yes' if config.API_KEY else 'No'}, Secret Loade
 
 # Init Binance & Trading Components
 try:
+    logger.info("Initializing Binance Client with provided API keys.")
     client = Client(config.API_KEY, config.API_SECRET)
     fetcher = DataFetcher(config.API_KEY, config.API_SECRET, config.TRADE_SYMBOL)
     order_executor = OrderExecution(config.API_KEY, config.API_SECRET)
@@ -137,7 +138,7 @@ async def webhook_listener(request: Request, x_signature: str = Header(None)):
 
     return {"status": "Webhook received"}
 
-# AI Prediction (stubbed)
+# AI Prediction
 @app.post("/api/ai_predict")
 async def ai_predict(request: Request):
     try:
