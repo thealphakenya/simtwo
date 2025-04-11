@@ -1,27 +1,25 @@
+import logging
+from backend.ai_models.model import TradingAI
+
 class TradingLogic:
-    def __init__(self, strategy_name="default"):
-        self.strategy_name = strategy_name
+    def __init__(self):
+        self.model = TradingAI()
+        logging.basicConfig(level=logging.INFO)
 
-    def evaluate_market(self, market_data):
+    def analyze_market(self, market_data):
         """
-        Evaluate market data and return a trading decision.
+        Use AI model to analyze market data and generate trading signals.
         """
-        if not market_data:
-            return "HOLD"
+        try:
+            signal = self.model.predict(market_data)
+            logging.info(f"Generated trading signal: {signal}")
+            return signal
+        except Exception as e:
+            logging.error(f"Failed to analyze market: {e}")
+            return {"error": str(e)}
 
-        price = market_data.get("price", 0)
-        if price > 100:
-            return "SELL"
-        elif price < 50:
-            return "BUY"
-        else:
-            return "HOLD"
+    def should_buy(self, signal):
+        return signal == "buy"
 
-    def set_strategy(self, name):
-        """
-        Set a new trading strategy.
-        """
-        self.strategy_name = name
-
-    def __str__(self):
-        return f"TradingLogic(strategy_name={self.strategy_name})"
+    def should_sell(self, signal):
+        return signal == "sell"

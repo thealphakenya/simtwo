@@ -9,10 +9,12 @@ from binance.enums import (
 )
 from backend.ai_models.model import TradingAI, ReinforcementLearning, train_model
 from backend.victorq.neutralizer import TradingHelper  # Shared logic
+from backend.trading_logic.trading_logic import TradingLogic  # Ensures it's found
 
 class OrderExecution:
     def __init__(self, client):
         self.client = client
+        self.logic = TradingLogic()
         logging.basicConfig(level=logging.INFO)
 
     def _validate_order_parameters(self, symbol, quantity, price=None):
