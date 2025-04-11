@@ -10,21 +10,8 @@ pandas>=1.3.0
 scikit-learn>=1.0
 scipy>=1.7
 keras>=2.11
-Keras-Preprocessing
 joblib
 h5py
-
-# === TensorFlow + AI Dependencies (Handled by TensorFlow usually) ===
-absl-py
-astunparse
-flatbuffers
-gast
-google-pasta
-grpcio
-libclang
-opt-einsum
-protobuf
-six
 
 # === Binance & Trading ===
 python-binance
@@ -32,10 +19,11 @@ websockets
 requests
 APScheduler
 
-# === FastAPI Extras ===
+# === FastAPI & API Utilities ===
 python-multipart
 python-dotenv
 pydantic
+httpx
 
 # === Utility Libraries ===
 python-dateutil
@@ -47,3 +35,6 @@ importlib-metadata; python_version < "3.8"
 
 # === OpenAI Integration ===
 openai
+
+# === Optional / Debug / Security ===
+cryptography
