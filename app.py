@@ -27,22 +27,34 @@ from backend import (
     get_safe_position_size
 )
 
-# Initialize FastAPI app
+# Initialize logging
+logging.basicConfig(level=logging.DEBUG)
+
+# Debug print env vars
+binance_api_key = os.getenv('BINANCE_API_KEY')
+binance_secret_key = os.getenv('BINANCE_SECRET_KEY')
+openai_key = os.getenv('OPENAI_API_KEY')
+webhook_secret = os.getenv('WEBHOOK_SECRET', 'defaultsecret')
+
+logging.debug(f"BINANCE_API_KEY: {'SET' if binance_api_key else 'NOT SET'}")
+logging.debug(f"BINANCE_SECRET_KEY: {'SET' if binance_secret_key else 'NOT SET'}")
+logging.debug(f"OPENAI_API_KEY: {'SET' if openai_key else 'NOT SET'}")
+logging.debug(f"WEBHOOK_SECRET: {'SET' if webhook_secret else 'NOT SET'}")
+
+# FastAPI app
 app = FastAPI()
 
 # Configuration class
 class Config:
-    API_KEY = os.getenv('BINANCE_API_KEY')
-    API_SECRET = os.getenv('BINANCE_SECRET_KEY')
+    API_KEY = binance_api_key
+    API_SECRET = binance_secret_key
     TRADE_SYMBOL = 'BTCUSDT'
     TRADE_QUANTITY = 0.01
-    WEBHOOK_SECRET = os.getenv('WEBHOOK_SECRET', 'defaultsecret')
-    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+    WEBHOOK_SECRET = webhook_secret
+    OPENAI_API_KEY = openai_key
 
 config = Config()
 openai.api_key = config.OPENAI_API_KEY
-
-logging.basicConfig(level=logging.DEBUG)
 
 if not config.API_KEY or not config.API_SECRET:
     logging.error("Missing Binance API keys in environment!")
@@ -69,7 +81,6 @@ app.mount("/static", StaticFiles(directory="frontend"), name="static")
 async def get_index():
     return FileResponse("frontend/index.html")
 
-
 @app.get("/api/market_data")
 async def get_market_data_api():
     try:
@@ -83,7 +94,6 @@ async def get_market_data_api():
     except Exception as e:
         logging.error(f"Market data error: {str(e)}")
         raise HTTPException(status_code=500, detail="Error fetching market data")
-
 
 @app.on_event("startup")
 async def train_on_startup():
@@ -99,7 +109,6 @@ async def train_on_startup():
     if len(df_data) > lstm_model.time_steps:
         lstm_model.train(df_data.drop(columns=['target']).values, df_data['target'].values)
 
-
 def check_model_drift(features, actual_price):
     predictions = {
         "lstm": lstm_model.predict(features),
@@ -113,7 +122,6 @@ def check_model_drift(features, actual_price):
             logging.warning(f"{model} model drift detected with error {error:.2f}. Consider retraining.")
             return True
     return False
-
 
 def process_and_execute_trade(new_data, models_to_use=None, confidence_threshold=50):
     global df_data
@@ -161,7 +169,6 @@ def process_and_execute_trade(new_data, models_to_use=None, confidence_threshold
         **predictions
     }, 200
 
-
 @app.post("/api/auto_trade")
 async def auto_trade():
     new_data = {
@@ -171,7 +178,6 @@ async def auto_trade():
     }
     result, status = process_and_execute_trade(new_data)
     return JSONResponse(content=result, status_code=status)
-
 
 def run_trading_job():
     try:
@@ -193,19 +199,16 @@ def run_trading_job():
     except Exception as e:
         logging.error(f"Scheduled trading error: {str(e)}")
 
-
 # Schedule the trading job
 scheduler = BackgroundScheduler()
 scheduler.add_job(run_trading_job, trigger='interval', seconds=300)
 scheduler.start()
 atexit.register(scheduler.shutdown)
 
-
 @app.post("/api/emergency_stop")
 async def emergency_stop():
     logging.warning("Emergency stop activated!")
     return {"status": "Emergency stop triggered"}
-
 
 @app.get("/health")
 async def health_check():
