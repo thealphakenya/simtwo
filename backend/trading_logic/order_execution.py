@@ -9,7 +9,7 @@ from binance.enums import (
 )
 from backend.ai_models.model import TradingAI, ReinforcementLearning, train_model
 from backend.victorq.neutralizer import TradingHelper  # Shared logic
-from backend.trading_logic import TradingLogic  # Fixed import
+from .logic import TradingLogic  # Use direct relative import to avoid circular import
 
 class OrderExecution:
     def __init__(self, client):
