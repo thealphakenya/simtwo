@@ -1,12 +1,11 @@
-# backend/utils/__init__.py
-
 from .logger import setup_logger
 from .helpers import format_response, Timer
-from backend.config import Settings  # Corrected to import Settings from backend/config
+from .utils import get_safe_position_size  # Ensure this import is added to use the function
 
+# Exposing the necessary functions and classes
 __all__ = [
     "setup_logger",
     "format_response",
     "Timer",
-    "Settings",  # Expose Settings instead of load_config
+    "get_safe_position_size",  # Expose the function
 ]
