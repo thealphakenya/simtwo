@@ -1,9 +1,7 @@
-# backend/ai_models/model.py
-
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.layers import LSTM, GRU, Dense, Dropout, Transformer
 from sklearn.preprocessing import StandardScaler
 from collections import deque
 import random
@@ -161,6 +159,119 @@ class LSTMTradingModel:
         # Reshape X to 3D: [samples, time_steps, features]
         X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
         
+        self.model.fit(X, y, epochs=epochs, batch_size=batch_size)
+
+    def predict(self, X):
+        """
+        Predict using the trained model.
+        
+        Parameters:
+        X (ndarray): Input features (time_steps x n_features)
+        
+        Returns:
+        ndarray: Predicted values
+        """
+        X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
+        return self.model.predict(X)
+
+
+# --- GRU Trading Model ---
+class GRUTradingModel:
+    def __init__(self, time_steps=10, n_features=10):
+        """
+        Initialize the GRU model.
+        
+        Parameters:
+        time_steps (int): Number of time steps to look back for prediction
+        n_features (int): Number of features per time step (e.g., OHLC, indicators)
+        """
+        self.time_steps = time_steps
+        self.n_features = n_features
+        self.model = self.build_model()
+
+    def build_model(self):
+        """
+        Build the GRU model.
+        """
+        model = Sequential([
+            GRU(50, input_shape=(self.time_steps, self.n_features), return_sequences=True),
+            Dropout(0.2),
+            GRU(50, return_sequences=False),
+            Dropout(0.2),
+            Dense(1)  # Output a single value for prediction
+        ])
+        model.compile(optimizer='adam', loss='mean_squared_error')
+        return model
+
+    def train(self, X, y, epochs=10, batch_size=32):
+        """
+        Train the GRU model.
+        
+        Parameters:
+        X (ndarray): Input features (time_steps x n_features)
+        y (ndarray): Target values to predict
+        epochs (int): Number of epochs to train the model
+        batch_size (int): Batch size for training
+        """
+        # Reshape X to 3D: [samples, time_steps, features]
+        X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
+        
+        self.model.fit(X, y, epochs=epochs, batch_size=batch_size)
+
+    def predict(self, X):
+        """
+        Predict using the trained model.
+        
+        Parameters:
+        X (ndarray): Input features (time_steps x n_features)
+        
+        Returns:
+        ndarray: Predicted values
+        """
+        X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
+        return self.model.predict(X)
+
+
+# --- Transformer Trading Model ---
+class TransformerTradingModel:
+    def __init__(self, time_steps=10, n_features=10):
+        """
+        Initialize the Transformer model.
+        
+        Parameters:
+        time_steps (int): Number of time steps to look back for prediction
+        n_features (int): Number of features per time step (e.g., OHLC, indicators)
+        """
+        self.time_steps = time_steps
+        self.n_features = n_features
+        self.model = self.build_model()
+
+    def build_model(self):
+        """
+        Build the Transformer model.
+        """
+        # Placeholder for Transformer architecture setup
+        model = Sequential([
+            Dense(64, input_dim=self.n_features * self.time_steps, activation='relu'),
+            Dropout(0.2),
+            Dense(64, activation='relu'),
+            Dropout(0.2),
+            Dense(1, activation='linear')
+        ])
+        model.compile(optimizer='adam', loss='mean_squared_error')
+        return model
+
+    def train(self, X, y, epochs=10, batch_size=32):
+        """
+        Train the Transformer model.
+        
+        Parameters:
+        X (ndarray): Input features (time_steps x n_features)
+        y (ndarray): Target values to predict
+        epochs (int): Number of epochs to train the model
+        batch_size (int): Batch size for training
+        """
+        X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
         self.model.fit(X, y, epochs=epochs, batch_size=batch_size)
 
     def predict(self, X):
