@@ -1,3 +1,5 @@
+# backend/utils/__init__.py
+
 from .logger import setup_logger
 from .helpers import format_response, Timer, get_safe_position_size
 
