@@ -1,3 +1,5 @@
+# backend/__init__.py
+
 from .data import DataFetcher, get_market_data
 from .trading_logic import OrderExecution, TradingLogic
 from .ai_models import (
@@ -7,7 +9,7 @@ from .ai_models import (
     TradingAI,
     ReinforcementLearning
 )
-from .utils import setup_logger, format_response, Timer, Settings  # Import Settings instead of load_config
+from .utils import setup_logger, format_response, Timer, Settings, get_safe_position_size
 
 __all__ = [
     "DataFetcher",
@@ -22,5 +24,6 @@ __all__ = [
     "setup_logger",
     "format_response",
     "Timer",
-    "Settings",  # Include Settings in __all__
+    "Settings",
+    "get_safe_position_size",
 ]
