@@ -112,14 +112,18 @@ async def get_market_data_api():
 @app.on_event("startup")
 async def train_on_startup():
     global df_data
+    # Add mock data if not enough data is available
     for _ in range(50):  # Simulate loading 50 historical rows
         row = {
             "open": 30000.5, "high": 30200.2, "low": 29900.1, "close": 30100.6, "volume": 105.23, 
             "rsi": 55.2, "macd": 0.3, "sma": 30120.1, "ema": 30090.7, "volatility": 0.005, "target": 30150.0
         }
         df_data = pd.concat([df_data, pd.DataFrame([row])], ignore_index=True)
+
     if len(df_data) > lstm_model.time_steps:
         lstm_model.train(df_data.drop(columns=['target']).values, df_data['target'].values)
+    else:
+        logging.warning("Not enough historical data to train LSTM model.")
 
 # Model Drift Detection (Simple Accuracy Check)
 def check_model_drift(features, actual_price):

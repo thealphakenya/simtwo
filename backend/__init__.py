@@ -1,5 +1,3 @@
-# backend/__init__.py
-
 # Import necessary components for data, trading logic, and AI models
 from .data import DataFetcher, get_market_data
 from .trading_logic.order_execution import OrderExecution
