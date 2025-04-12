@@ -18,7 +18,11 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const res = await fetch("/api/market_data");
       const data = await res.json();
-      priceElement.textContent = parseFloat(data.price).toFixed(2);
+      if (data && data.price) {
+        priceElement.textContent = parseFloat(data.price).toFixed(2);
+      } else {
+        throw new Error("Price data is missing.");
+      }
     } catch (err) {
       priceElement.textContent = "Error";
       console.error("Error fetching market data:", err);
@@ -41,10 +45,16 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ message: userMessage }),
       });
       const data = await res.json();
-      appendChatMessage("AI", data.response);
+
+      // Ensure the response contains a valid AI message
+      if (data && data.response) {
+        appendChatMessage("AI", data.response);
+      } else {
+        throw new Error("Invalid AI response.");
+      }
     } catch (err) {
       appendChatMessage("AI", "Sorry, something went wrong.");
-      console.error(err);
+      console.error("AI Chat Error:", err);
     }
   });
 
@@ -61,17 +71,29 @@ document.addEventListener("DOMContentLoaded", () => {
     const model = modelSelect.value;
     const confidence = confidenceInput.value;
 
+    // Validate confidence input
+    if (!confidence || isNaN(confidence)) {
+      alert("Please enter a valid confidence threshold.");
+      return;
+    }
+
     try {
       const res = await fetch("/api/auto_trade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, confidence_threshold: confidence }),
+        body: JSON.stringify({ model, confidence_threshold: parseFloat(confidence) }),
       });
       const result = await res.json();
-      alert(`Action: ${result.action.toUpperCase()} — Prediction: ${result.final_predicted_price}`);
+
+      // Ensure we get a valid response
+      if (result && result.action && result.final_predicted_price) {
+        alert(`Action: ${result.action.toUpperCase()} — Prediction: ${result.final_predicted_price}`);
+      } else {
+        throw new Error("Invalid auto trade response.");
+      }
     } catch (err) {
       alert("Auto trade failed.");
-      console.error(err);
+      console.error("Auto trade error:", err);
     }
   });
 
@@ -80,10 +102,14 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const res = await fetch("/api/emergency_stop", { method: "POST" });
       const result = await res.json();
-      alert(result.status);
+      if (result && result.status) {
+        alert(result.status);
+      } else {
+        throw new Error("Failed to trigger emergency stop.");
+      }
     } catch (err) {
       alert("Failed to trigger emergency stop.");
-      console.error(err);
+      console.error("Emergency Stop Error:", err);
     }
   });
 
@@ -92,7 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const amount = orderAmountInput.value;
     const type = orderTypeSelect.value;
 
-    if (!amount) return alert("Please enter an order amount.");
+    if (!amount || isNaN(amount)) return alert("Please enter a valid order amount.");
 
     try {
       const res = await fetch("/api/order", {
@@ -101,10 +127,16 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ side, amount, type }),
       });
       const result = await res.json();
-      alert(`${side.toUpperCase()} order executed: ${JSON.stringify(result.order)}`);
+
+      // Ensure we get a valid order response
+      if (result && result.status && result.order) {
+        alert(`${side.toUpperCase()} order executed: ${JSON.stringify(result.order)}`);
+      } else {
+        throw new Error("Invalid order response.");
+      }
     } catch (err) {
       alert("Order failed.");
-      console.error(err);
+      console.error("Order Error:", err);
     }
   }
 

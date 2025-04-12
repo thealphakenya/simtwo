@@ -1,3 +1,4 @@
+/* General Styles */
 body {
   font-family: 'Segoe UI', sans-serif;
   background-color: #1e1e2f;
@@ -10,27 +11,38 @@ body {
   max-width: 1000px;
   margin: auto;
   padding: 20px;
+  background-color: #252536;
+  border-radius: 12px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
 }
 
+/* Headings */
 h1, h3 {
   color: #ffffff;
+  text-align: center;
 }
 
+/* Section Styling */
 #trading-info, #model-config, #order-section, #chatwithai, #account-selection, #emergency-stop {
   background: #2c2c3e;
   border-radius: 10px;
   padding: 15px;
   margin: 15px 0;
-  box-shadow: 0 0 10px rgba(0,0,0,0.6);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
 }
 
+/* AI Status Section */
 #ai-status {
   color: #7fff7f;
   font-weight: bold;
   padding: 10px;
   text-align: center;
+  background-color: #3b3b4f;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
 
+/* Button Styling */
 button {
   background-color: #444;
   color: #fff;
@@ -46,6 +58,7 @@ button:hover {
   background-color: #666;
 }
 
+/* Input and Select Styling */
 input, select {
   padding: 8px;
   margin: 5px;
@@ -55,6 +68,15 @@ input, select {
   border-radius: 6px;
 }
 
+/* Order Section Styling */
+#order-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Chatbox Styling */
 #chat-box {
   max-height: 300px;
   overflow-y: auto;
@@ -63,8 +85,67 @@ input, select {
   border-radius: 8px;
   margin-bottom: 10px;
   font-size: 14px;
+  color: #f0f0f0;
+  word-wrap: break-word;
 }
 
+/* Chat Message Styling */
 .chat-message {
   margin: 5px 0;
+}
+
+.chat-message strong {
+  color: #00b5e2; /* Color for sender name */
+}
+
+/* Account Selection Buttons */
+#account-selection button {
+  width: 150px;
+  margin: 5px;
+  background-color: #444;
+  color: #fff;
+  font-weight: bold;
+}
+
+#account-selection button:hover {
+  background-color: #666;
+}
+
+/* Model & Confidence Section */
+#model-config {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Layout Adjustments */
+#order-section, #model-config {
+  max-width: 500px;
+  margin: auto;
+}
+
+#order-section input, #order-section select, #order-section button {
+  margin-bottom: 10px;
+}
+
+/* Chart Canvas Container */
+#chart-canvas {
+  display: block;
+  margin: 20px auto;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  #container {
+    padding: 10px;
+  }
+
+  #order-section, #model-config {
+    max-width: 100%;
+  }
+
+  #order-section input, #order-section select, #order-section button {
+    width: 100%;
+  }
 }

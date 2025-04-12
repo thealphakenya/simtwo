@@ -1,5 +1,3 @@
-# === FULL PATCHED app.py ===
-
 import os
 import sys
 import json
@@ -182,12 +180,20 @@ async def chat_with_ai(request: Request):
         if not user_input:
             raise ValueError("Message is empty")
 
+        logger.debug(f"User input: {user_input}")
+
+        # Make the API call to OpenAI
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": user_input}]
         )
+
+        # Log the raw OpenAI response for debugging
+        logger.debug(f"OpenAI response: {response}")
+
         return {"response": response.choices[0].message["content"].strip()}
     except Exception as e:
+        logger.error(f"AI chat failed: {str(e)}")
         raise HTTPException(status_code=500, detail="AI chat failed")
 
 @app.get("/health")
