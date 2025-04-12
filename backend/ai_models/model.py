@@ -6,7 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from collections import deque
 import random
 
-from core.status import StatusManager  # For trade decision logic
+from core.status_manager import StatusManager  # Corrected import
 
 # --- Base Trading Model ---
 
