@@ -182,16 +182,17 @@ async def chat_with_ai(request: Request):
 
         logger.debug(f"User input: {user_input}")
 
-        # Make the API call to OpenAI
-        response = openai.ChatCompletion.create(
+        # Using the new openai API
+        response = openai.Completion.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": user_input}]
+            prompt=user_input,
+            max_tokens=150
         )
 
         # Log the raw OpenAI response for debugging
         logger.debug(f"OpenAI response: {response}")
 
-        return {"response": response.choices[0].message["content"].strip()}
+        return {"response": response.choices[0].text.strip()}
     except Exception as e:
         logger.error(f"AI chat failed: {str(e)}")
         raise HTTPException(status_code=500, detail="AI chat failed")
