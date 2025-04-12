@@ -4,13 +4,34 @@ const https = require("https");
 const WebSocket = require("ws");
 const fetch = require("node-fetch");
 const fs = require("fs");
+const { execSync } = require("child_process");
 
 const app = express();
 
-// HTTPS cert and key setup
+// Paths for the certificate and key
+const certPath = "certificate.crt";
+const keyPath = "private.key";
+
+// Function to check if certificates exist and generate them if not
+const generateSelfSignedCerts = () => {
+  if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
+    console.log("Certificates not found. Generating self-signed certificates...");
+    
+    // Generate certificates using OpenSSL command
+    execSync(`openssl req -nodes -new -x509 -keyout ${keyPath} -out ${certPath} -days 365 -subj "/C=US/ST=State/L=City/O=Company/CN=localhost"`);
+    
+    console.log("Self-signed certificates generated.");
+  } else {
+    console.log("Certificates found.");
+  }
+};
+
+// Generate certificates if they don't exist
+generateSelfSignedCerts();
+
 const options = {
-  cert: fs.readFileSync("path/to/certificate.crt"), // Replace with actual cert path
-  key: fs.readFileSync("path/to/private.key"),       // Replace with actual key path
+  cert: fs.readFileSync(certPath),  // Read the certificate
+  key: fs.readFileSync(keyPath),    // Read the private key
 };
 
 const server = https.createServer(options, app);
