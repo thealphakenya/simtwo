@@ -3,6 +3,7 @@ fastapi
 uvicorn[standard]
 gunicorn
 flask
+flask-socketio
 
 # === ML & Data Science ===
 tensorflow-cpu>=2.11.0
