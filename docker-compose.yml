@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading_backend
+    volumes:
+      - .:/app
+    ports:
+      - "5000:5000"
+    depends_on:
+      - websocket
+    restart: always
+
+  websocket:
+    image: node:18-slim
+    container_name: websocket_server
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "8765:8765"
+    command: ["node", "ws_server.js"]
+    restart: always

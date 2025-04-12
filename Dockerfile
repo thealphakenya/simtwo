@@ -9,7 +9,8 @@ ENV CUDA_VISIBLE_DEVICES=-1 \
     PYTHONUNBUFFERED=1
 
 RUN apt-get update && \
-    apt-get install -y gcc libpq-dev curl build-essential libatlas-base-dev libopenblas-dev && \
+    apt-get install -y gcc libpq-dev curl build-essential libatlas-base-dev libopenblas-dev nodejs npm && \
+    npm install -g pm2 node-fetch && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -21,6 +22,6 @@ RUN find /app -name '__pycache__' -type d -exec rm -r {} +
 
 COPY . /app
 
-EXPOSE 5000
+EXPOSE 5000 8765
 
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:5000", "app:app"]
+CMD ["pm2-runtime", "ecosystem.config.js"]
