@@ -11,15 +11,39 @@
   <div id="container">
     <header>
       <h1>Simtwo - AI Trading Dashboard</h1>
-      <div class="theme-toggle">
-        <label class="switch">
-          <input type="checkbox" id="theme-toggle">
-          <span class="slider round"></span>
-        </label>
-        <span id="theme-label">Dark Mode</span>
+
+      <div class="header-right">
+        <div class="theme-toggle">
+          <label class="switch">
+            <input type="checkbox" id="theme-toggle">
+            <span class="slider round"></span>
+          </label>
+          <span id="theme-label">Dark Mode</span>
+        </div>
+        <div id="symbol-filter">
+          <label for="symbol-select"><strong>Active Symbol:</strong></label>
+          <select id="symbol-select">
+            <option value="BTCUSDT">BTCUSDT</option>
+            <option value="ETHUSDT">ETHUSDT</option>
+            <option value="BNBUSDT">BNBUSDT</option>
+            <option value="XRPUSDT">XRPUSDT</option>
+            <option value="DOGEUSDT">DOGEUSDT</option>
+            <!-- Add more as needed -->
+          </select>
+        </div>
       </div>
-      <div id="current-symbol">Symbol: <span id="symbol">BTCUSDT</span></div>
-      <div id="current-price">Price: <span id="price">Loading...</span></div>
+
+      <div id="current-price">
+        <strong>Live Prices:</strong>
+        <div id="price">
+          <!-- Filled dynamically -->
+          <div class="symbol-price" data-symbol="BTCUSDT">BTCUSDT: <span>Loading...</span></div>
+          <div class="symbol-price" data-symbol="ETHUSDT">ETHUSDT: <span>Loading...</span></div>
+          <div class="symbol-price" data-symbol="BNBUSDT">BNBUSDT: <span>Loading...</span></div>
+          <div class="symbol-price" data-symbol="XRPUSDT">XRPUSDT: <span>Loading...</span></div>
+          <div class="symbol-price" data-symbol="DOGEUSDT">DOGEUSDT: <span>Loading...</span></div>
+        </div>
+      </div>
     </header>
 
     <canvas id="chart-canvas" width="600" height="300"></canvas>
@@ -89,15 +113,5 @@
   </div>
 
   <script src="/static/js/app.js"></script>
-  <script>
-    // Theme toggle
-    const toggle = document.getElementById('theme-toggle');
-    const label = document.getElementById('theme-label');
-    toggle.addEventListener('change', () => {
-      document.body.classList.toggle('light');
-      document.body.classList.toggle('dark');
-      label.textContent = document.body.classList.contains('light') ? 'Light Mode' : 'Dark Mode';
-    });
-  </script>
 </body>
 </html>

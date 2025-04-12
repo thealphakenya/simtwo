@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const preferencesForm = document.getElementById("preferences-form");
   const priceElement = document.getElementById("price");
   const chatForm = document.getElementById("chat-form");
   const chatInput = document.getElementById("chat-input");
@@ -23,7 +22,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let chart;
   let socket;
 
-  // Toast utility
   function showToast(message, type = "info") {
     const toast = document.createElement("div");
     toast.className = `toast ${type}`;
@@ -32,7 +30,6 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => toast.remove(), 4000);
   }
 
-  // Theme toggle handling
   const savedTheme = localStorage.getItem("theme") || "dark";
   document.body.classList.add(savedTheme);
   themeToggle.checked = savedTheme === "light";
@@ -41,15 +38,12 @@ document.addEventListener("DOMContentLoaded", () => {
   themeToggle.addEventListener("change", () => {
     document.body.classList.toggle("dark");
     document.body.classList.toggle("light");
-
     const newTheme = document.body.classList.contains("light") ? "light" : "dark";
     localStorage.setItem("theme", newTheme);
     themeLabel.textContent = newTheme === "light" ? "Light Mode" : "Dark Mode";
-
     updateChartTheme(newTheme);
   });
 
-  // Update chart styling based on theme
   function updateChartTheme(theme) {
     const isDark = theme === "dark";
     const gridColor = isDark ? "#333" : "#ccc";
@@ -65,18 +59,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Fetch market price
   async function fetchPrice() {
     try {
       const res = await fetch("/api/market_data");
       const data = await res.json();
-      priceElement.textContent = data.price ? parseFloat(data.price).toFixed(2) : "Error";
+      if (data.price) {
+        priceElement.textContent = `$${parseFloat(data.price).toFixed(2)}`;
+      } else {
+        priceElement.textContent = "Error";
+      }
     } catch {
       priceElement.textContent = "Error";
     }
   }
 
-  // Fetch balance
   async function fetchBalance() {
     try {
       const res = await fetch("/api/balance");
@@ -90,7 +86,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Fetch chat memory
   async function loadMemory() {
     const res = await fetch("/api/memory");
     const data = await res.json();
@@ -101,7 +96,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Chat message handling
   chatForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const msg = chatInput.value.trim();
@@ -128,7 +122,6 @@ document.addEventListener("DOMContentLoaded", () => {
     chatBox.scrollTop = chatBox.scrollHeight;
   }
 
-  // WebSocket for real-time data updates
   function initializeWebSocket() {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -141,7 +134,14 @@ document.addEventListener("DOMContentLoaded", () => {
     socket.onmessage = (event) => {
       try {
         const newData = JSON.parse(event.data);
-        updateChart(newData);
+
+        if (Array.isArray(newData.chart)) {
+          updateChart(newData.chart);
+        }
+
+        if (newData.latest) {
+          updatePrices(newData.latest);
+        }
       } catch (e) {
         console.error("Invalid WebSocket message:", e);
       }
@@ -149,36 +149,66 @@ document.addEventListener("DOMContentLoaded", () => {
 
     socket.onerror = (err) => {
       console.error("WebSocket error:", err);
+      showToast("WebSocket error. Retrying...", "error");
     };
 
     socket.onclose = () => {
       console.warn("WebSocket closed. Reconnecting in 5s...");
+      showToast("WebSocket closed. Reconnecting...", "warning");
       setTimeout(initializeWebSocket, 5000);
     };
   }
 
-  // Chart setup
+  function updateChart(chartData) {
+    if (!chart) return;
+
+    const symbolMap = {};
+    chartData.forEach(({ symbol, time, price }) => {
+      if (!symbolMap[symbol]) symbolMap[symbol] = { labels: [], prices: [] };
+      symbolMap[symbol].labels.push(time);
+      symbolMap[symbol].prices.push(price);
+    });
+
+    const labels = symbolMap[Object.keys(symbolMap)[0]].labels;
+    chart.data.labels = labels;
+
+    chart.data.datasets = Object.entries(symbolMap).map(([symbol, { prices }], index) => ({
+      label: symbol,
+      data: prices,
+      borderColor: getColor(index),
+      backgroundColor: "transparent",
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.3
+    }));
+
+    chart.update();
+  }
+
+  function getColor(index) {
+    const colors = ["#00ffcc", "#ff6384", "#36a2eb", "#ffce56", "#4bc0c0", "#9966ff"];
+    return colors[index % colors.length];
+  }
+
+  function updatePrices(latestData) {
+    priceElement.innerHTML = ""; // Clear current display
+    Object.values(latestData).forEach(({ symbol, price }) => {
+      const div = document.createElement("div");
+      div.textContent = `${symbol}: $${parseFloat(price).toFixed(2)}`;
+      priceElement.appendChild(div);
+    });
+  }
+
   async function setupChart() {
     const ctx = document.getElementById("chart-canvas").getContext("2d");
-    const res = await fetch("/api/chart_data");
+    const res = await fetch("/api/ohlcv");
     const data = await res.json();
-
-    const labels = data.map(item => item.time);
-    const prices = data.map(item => item.price);
 
     chart = new Chart(ctx, {
       type: "line",
       data: {
-        labels,
-        datasets: [{
-          label: "Price",
-          data: prices,
-          borderColor: "#00ffcc",
-          backgroundColor: "rgba(0,255,204,0.1)",
-          borderWidth: 2,
-          pointRadius: 0,
-          tension: 0.3
-        }]
+        labels: [],
+        datasets: []
       },
       options: {
         responsive: true,
@@ -192,17 +222,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
+    updateChart(data);
     updateChartTheme(savedTheme);
   }
 
-  function updateChart(newData) {
-    if (!chart) return;
-    chart.data.labels = newData.map(item => item.time);
-    chart.data.datasets[0].data = newData.map(item => item.price);
-    chart.update();
-  }
-
-  // Update strategy weights
   updateBtn.addEventListener("click", async () => {
     const payload = {
       lstm: parseFloat(lstmInput.value),
@@ -210,7 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
       reinforcement: parseFloat(rlInput.value)
     };
 
-    const res = await fetch("/api/strategy_weights", {
+    const res = await fetch("/api/set_preferences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -220,13 +243,12 @@ document.addEventListener("DOMContentLoaded", () => {
     showToast(data.status || "Update failed.", "info");
   });
 
-  // Place order functions
   async function placeOrder(side) {
     const amount = parseFloat(orderAmountInput.value);
     const type = orderTypeSelect.value;
     if (isNaN(amount)) return showToast("Invalid amount.", "error");
 
-    const res = await fetch("/api/order", {
+    const res = await fetch("/api/place_order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ side, amount, type })
@@ -247,4 +269,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   setInterval(fetchPrice, 10000);
   setInterval(fetchBalance, 15000);
+
+  window.addEventListener("resize", () => {
+    if (chart) {
+      chart.resize();
+    }
+  });
 });

@@ -6,6 +6,8 @@ from sklearn.preprocessing import StandardScaler
 from collections import deque
 import random
 
+from core.status import StatusManager  # For trade decision logic
+
 # --- Base Trading Model ---
 
 class BaseTradingModel:
@@ -31,6 +33,7 @@ class ReinforcementLearning(BaseTradingModel):
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.batch_size = 32
+        self.status_manager = StatusManager(confidence_threshold=0.85)
 
     def build_model(self):
         model = Sequential([
@@ -45,7 +48,8 @@ class ReinforcementLearning(BaseTradingModel):
 
     def predict(self, state):
         state = self.scaler.transform(state.reshape(1, -1))
-        return self.model.predict(state)[0][0]
+        prediction = self.model.predict(state, verbose=0)[0][0]
+        return prediction
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
@@ -63,7 +67,9 @@ class ReinforcementLearning(BaseTradingModel):
         for state, action, reward, next_state, done in minibatch:
             target = reward
             if not done:
-                target += self.gamma * self.model.predict(self.scaler.transform(next_state.reshape(1, -1)))[0][0]
+                target += self.gamma * self.model.predict(
+                    self.scaler.transform(next_state.reshape(1, -1)), verbose=0
+                )[0][0]
             state = self.scaler.transform(state.reshape(1, -1))
             self.model.fit(state, np.array([target]), epochs=1, verbose=0)
         if self.epsilon > self.epsilon_min:
@@ -109,11 +115,11 @@ class LSTMTradingModel(BaseTradingModel):
 
     def train(self, X, y, epochs=10, batch_size=32):
         X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
-        self.model.fit(X, y, epochs=epochs, batch_size=batch_size)
+        self.model.fit(X, y, epochs=epochs, batch_size=batch_size, verbose=0)
 
     def predict(self, X):
         X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
-        return self.model.predict(X)
+        return self.model.predict(X, verbose=0)
 
 # --- GRU Trading Model ---
 
@@ -136,13 +142,13 @@ class GRUTradingModel(BaseTradingModel):
 
     def train(self, X, y, epochs=10, batch_size=32):
         X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
-        self.model.fit(X, y, epochs=epochs, batch_size=batch_size)
+        self.model.fit(X, y, epochs=epochs, batch_size=batch_size, verbose=0)
 
     def predict(self, X):
         X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
-        return self.model.predict(X)
+        return self.model.predict(X, verbose=0)
 
-# --- Transformer Trading Model ---
+# --- Transformer-like Dense Trading Model ---
 
 class TransformerTradingModel(BaseTradingModel):
     def __init__(self, time_steps=10, n_features=10):
@@ -162,14 +168,14 @@ class TransformerTradingModel(BaseTradingModel):
         return model
 
     def train(self, X, y, epochs=10, batch_size=32):
-        X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
-        self.model.fit(X, y, epochs=epochs, batch_size=batch_size)
+        X = np.array(X).reshape((X.shape[0], self.time_steps * self.n_features))
+        self.model.fit(X, y, epochs=epochs, batch_size=batch_size, verbose=0)
 
     def predict(self, X):
-        X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
-        return self.model.predict(X)
+        X = np.array(X).reshape((X.shape[0], self.time_steps * self.n_features))
+        return self.model.predict(X, verbose=0)
 
-# --- TradingAI High-Level Wrapper ---
+# --- High-Level Trading AI Wrapper ---
 
 class TradingAI:
     def __init__(self, api_key=None, api_secret=None, model_type='lstm', time_steps=10, n_features=10):

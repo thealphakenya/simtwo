@@ -7,6 +7,8 @@ body.dark {
   --input-bg: #333;
   --button-bg: #2196f3;
   --button-hover: #1976d2;
+  --card-bg: #1e1e1e;
+  --price-bg: #2a2a2a;
 }
 
 body.light {
@@ -17,6 +19,8 @@ body.light {
   --input-bg: #eee;
   --button-bg: #1976d2;
   --button-hover: #1565c0;
+  --card-bg: #f0f0f0;
+  --price-bg: #ddd;
 }
 
 body {
@@ -31,6 +35,7 @@ body {
   max-width: 1000px;
   margin: auto;
   padding: 20px;
+  border-radius: 10px;
 }
 
 /* Header */
@@ -41,6 +46,17 @@ header {
 
 header h1 {
   color: var(--accent);
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+}
+
+.header-right {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 10px;
 }
 
 .theme-toggle {
@@ -48,9 +64,9 @@ header h1 {
   justify-content: center;
   align-items: center;
   gap: 10px;
-  margin: 10px 0;
 }
 
+/* Theme Switch */
 .switch {
   position: relative;
   display: inline-block;
@@ -91,9 +107,59 @@ input:checked + .slider.round:before {
   transform: translateX(26px);
 }
 
+/* Symbol selector */
+#symbol-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+#symbol-select {
+  padding: 6px 10px;
+  background: var(--input-bg);
+  border-radius: 5px;
+  border: none;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+/* Price Panel */
+#current-price {
+  text-align: center;
+  margin-top: 20px;
+  background: var(--panel);
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+#price {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.symbol-price {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background-color: var(--price-bg);
+  color: var(--text);
+  font-weight: bold;
+  font-size: 0.95rem;
+  min-width: 100px;
+  text-align: center;
+  border: 1px solid #444;
+}
+
 /* Chart */
 #chart-canvas {
-  background-color: #1e1e1e;
+  background-color: var(--card-bg);
   border: 1px solid #333;
   margin: 20px auto;
   display: block;
@@ -160,7 +226,7 @@ input:checked + .slider.round:before {
 
 #chat-box {
   height: 200px;
-  background-color: #2a2a2a;
+  background-color: var(--card-bg);
   border: 1px solid #444;
   overflow-y: auto;
   padding: 10px;
@@ -221,7 +287,7 @@ input[type="range"]::-webkit-slider-thumb {
   background: #9c27b0;
 }
 
-/* Toast */
+/* Toasts */
 .toast {
   position: fixed;
   bottom: 20px;
