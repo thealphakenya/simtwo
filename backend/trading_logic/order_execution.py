@@ -7,7 +7,7 @@ from binance.enums import (
     ORDER_TYPE_MARKET, ORDER_TYPE_LIMIT,
     TIME_IN_FORCE_GTC
 )
-from backend.ai_models.model import TradingAI, ReinforcementLearning, train_model
+from backend.ai_models.model import TradingAI, ReinforcementLearning
 from backend.victorq.neutralizer import TradingHelper  # Shared logic
 from .logic import TradingLogic  # Use direct relative import to avoid circular import
 
@@ -16,6 +16,13 @@ class OrderExecution:
         self.client = Client(api_key, api_secret)
         self.logic = TradingLogic()
         logging.basicConfig(level=logging.INFO)
+
+        # Initialize the ReinforcementLearning model here
+        self.reinforcement_model = ReinforcementLearning(api_key, api_secret, time_steps=10, n_features=10)
+        
+        # Ensure your data (X, y) is prepared somewhere in your code for training
+        self.X = None  # Replace with actual feature data
+        self.y = None  # Replace with actual target data
 
     def _validate_order_parameters(self, symbol, quantity, price=None):
         try:
@@ -99,3 +106,13 @@ class OrderExecution:
 
     def calculate_position_size(self, balance):
         return TradingHelper.calculate_position_size(balance)
+
+    # Add this method to trigger model training
+    def train_reinforcement_model(self, epochs=50, batch_size=32):
+        if self.X is None or self.y is None:
+            logging.error("Feature data (X) or target data (y) not provided.")
+            return
+
+        # Train the reinforcement learning model using train_model
+        self.reinforcement_model.train_model(self.X, self.y, epochs=epochs, batch_size=batch_size)
+        logging.info(f"Training complete for {epochs} epochs.")
