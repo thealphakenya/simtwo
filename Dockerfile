@@ -11,6 +11,7 @@ ENV CUDA_VISIBLE_DEVICES=-1 \
 RUN apt-get update && \
     apt-get install -y gcc libpq-dev curl build-essential libatlas-base-dev libopenblas-dev nodejs npm && \
     npm install -g pm2 node-fetch && \
+    npm install express ws && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
