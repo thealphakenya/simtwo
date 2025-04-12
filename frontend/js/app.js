@@ -1,128 +1,116 @@
-let chart;
-let chartData = {
-  labels: [],
-  datasets: [{
-    label: 'BTC Price (USDT)',
-    borderColor: 'rgba(0,255,132,1)',
-    backgroundColor: 'rgba(0,255,132,0.2)',
-    data: [],
-    tension: 0.3
-  }]
-};
+document.addEventListener("DOMContentLoaded", () => {
+  const priceElement = document.getElementById("price");
+  const chatForm = document.getElementById("chat-form");
+  const chatInput = document.getElementById("chat-input");
+  const chatBox = document.getElementById("chat-box");
+  const autoTradeBtn = document.getElementById("autoTradeButton");
+  const modelSelect = document.getElementById("model-select");
+  const confidenceInput = document.getElementById("confidence-input");
+  const emergencyBtn = document.getElementById("emergency-stop-btn");
+  const buyBtn = document.getElementById("place-buy-order");
+  const sellBtn = document.getElementById("place-sell-order");
 
-function initChart() {
-  const ctx = document.getElementById('chart-canvas').getContext('2d');
-  chart = new Chart(ctx, {
-    type: 'line',
-    data: chartData,
-    options: {
-      scales: {
-        x: { type: 'time', time: { unit: 'minute' }, title: { display: true, text: 'Time' }},
-        y: { title: { display: true, text: 'Price (USDT)' }}
-      }
+  const orderAmountInput = document.getElementById("order-amount");
+  const orderTypeSelect = document.getElementById("order-type");
+
+  // Fetch and display current price
+  async function fetchPrice() {
+    try {
+      const res = await fetch("/api/market_data");
+      const data = await res.json();
+      priceElement.textContent = parseFloat(data.price).toFixed(2);
+    } catch (err) {
+      priceElement.textContent = "Error";
+      console.error("Error fetching market data:", err);
+    }
+  }
+
+  // AI Chat
+  chatForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const userMessage = chatInput.value.trim();
+    if (!userMessage) return;
+
+    appendChatMessage("You", userMessage);
+    chatInput.value = "";
+
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage }),
+      });
+      const data = await res.json();
+      appendChatMessage("AI", data.response);
+    } catch (err) {
+      appendChatMessage("AI", "Sorry, something went wrong.");
+      console.error(err);
     }
   });
-}
 
-async function updateChart() {
-  try {
-    const res = await fetch('/api/market_data');
-    const data = await res.json();
-    const now = new Date();
-    chartData.labels.push(now);
-    chartData.datasets[0].data.push(data.price);
-    if (chartData.labels.length > 20) {
-      chartData.labels.shift();
-      chartData.datasets[0].data.shift();
+  function appendChatMessage(sender, message) {
+    const msgEl = document.createElement("div");
+    msgEl.className = "chat-message";
+    msgEl.innerHTML = `<strong>${sender}:</strong> ${message}`;
+    chatBox.appendChild(msgEl);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  // Auto trade
+  autoTradeBtn.addEventListener("click", async () => {
+    const model = modelSelect.value;
+    const confidence = confidenceInput.value;
+
+    try {
+      const res = await fetch("/api/auto_trade", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model, confidence_threshold: confidence }),
+      });
+      const result = await res.json();
+      alert(`Action: ${result.action.toUpperCase()} — Prediction: ${result.final_predicted_price}`);
+    } catch (err) {
+      alert("Auto trade failed.");
+      console.error(err);
     }
-    chart.update();
-    document.getElementById('price').innerText = data.price.toFixed(2);
-    document.getElementById('symbol').innerText = data.symbol;
-  } catch (err) {
-    console.error('Price update failed:', err);
+  });
+
+  // Emergency stop
+  emergencyBtn.addEventListener("click", async () => {
+    try {
+      const res = await fetch("/api/emergency_stop", { method: "POST" });
+      const result = await res.json();
+      alert(result.status);
+    } catch (err) {
+      alert("Failed to trigger emergency stop.");
+      console.error(err);
+    }
+  });
+
+  // Buy/Sell Orders
+  async function placeOrder(side) {
+    const amount = orderAmountInput.value;
+    const type = orderTypeSelect.value;
+
+    if (!amount) return alert("Please enter an order amount.");
+
+    try {
+      const res = await fetch("/api/order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ side, amount, type }),
+      });
+      const result = await res.json();
+      alert(`${side.toUpperCase()} order executed: ${JSON.stringify(result.order)}`);
+    } catch (err) {
+      alert("Order failed.");
+      console.error(err);
+    }
   }
-}
 
-async function sendChat(message) {
-  try {
-    const res = await fetch('/api/ai/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message })
-    });
-    const data = await res.json();
-    const box = document.getElementById('chat-box');
-    box.innerHTML += `<div class="user-msg">You: ${message}</div>`;
-    box.innerHTML += `<div class="ai-msg">AI: ${data.response}</div>`;
-    box.scrollTop = box.scrollHeight;
-  } catch (error) {
-    console.error('Chat error:', error);
-  }
-}
+  buyBtn.addEventListener("click", () => placeOrder("buy"));
+  sellBtn.addEventListener("click", () => placeOrder("sell"));
 
-async function placeOrder(side) {
-  const amount = parseFloat(document.getElementById('order-amount').value);
-  const orderType = document.getElementById('order-type').value;
-  if (!amount) return alert('Enter amount');
-
-  try {
-    const res = await fetch('/api/order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ side, amount, type: orderType })
-    });
-    const result = await res.json();
-    alert(result.status || result.detail || 'Order placed');
-  } catch (error) {
-    console.error('Order failed:', error);
-  }
-}
-
-async function emergencyStop() {
-  try {
-    const res = await fetch('/api/emergency_stop', { method: 'POST' });
-    const result = await res.json();
-    alert(result.status || 'Emergency stop activated');
-  } catch (error) {
-    console.error('Emergency stop failed:', error);
-  }
-}
-
-async function autoTrade() {
-  const model = document.getElementById('model-select').value;
-  const confidence = parseFloat(document.getElementById('confidence-input').value);
-
-  try {
-    const res = await fetch('/api/auto_trade', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, confidence_threshold: confidence })
-    });
-    const result = await res.json();
-    alert(`Action: ${result.action.toUpperCase()} at $${result.final_predicted_price}`);
-  } catch (err) {
-    alert('Auto trading failed.');
-    console.error(err);
-  }
-}
-
-// Event Bindings
-document.getElementById('place-buy-order').addEventListener('click', () => placeOrder('buy'));
-document.getElementById('place-sell-order').addEventListener('click', () => placeOrder('sell'));
-document.getElementById('emergency-stop-btn').addEventListener('click', emergencyStop);
-document.getElementById('autoTradeButton').addEventListener('click', autoTrade);
-document.getElementById('chat-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const msg = document.getElementById('chat-input').value;
-  if (msg.trim()) {
-    sendChat(msg);
-    document.getElementById('chat-input').value = '';
-  }
+  fetchPrice();
+  setInterval(fetchPrice, 10000); // refresh price every 10 seconds
 });
-document.getElementById('virtualAccountBtn').addEventListener('click', () => alert("Switched to Virtual Account"));
-document.getElementById('realAccountBtn').addEventListener('click', () => alert("Switched to Real Account"));
-
-// Init
-initChart();
-updateChart();
-setInterval(updateChart, 5000);
