@@ -32,7 +32,7 @@ from backend import (
 # Load environment variables
 load_dotenv()
 
-# Setup Logging
+# Logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -80,6 +80,18 @@ auto_trade_enabled = False
 use_virtual_account = True
 virtual_balance = 200.00
 
+# AI Status System
+ai_status = {
+    "state": "LOADING",
+    "details": "System booting up"
+}
+
+def update_ai_status(state: str, details: str = ""):
+    ai_status["state"] = state
+    ai_status["details"] = details or state
+
+update_ai_status("LOADING", "System booting up and loading models")
+
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
     return FileResponse("frontend/index.html")
@@ -88,7 +100,28 @@ async def get_index():
 async def get_market_data_api():
     try:
         data = fetcher.fetch_ticker(config.TRADE_SYMBOL)
+        update_ai_status("ACTIVE", "Monitoring market conditions")
         return data
+    except Exception as e:
+        update_ai_status("ERROR", "Failed to fetch market data")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/ai_status")
+async def get_ai_status():
+    return {
+        "status": f"{ai_status['state']} - {ai_status['details']}"
+    }
+
+@app.post("/api/set_ai_status")
+async def set_ai_status(request: Request):
+    try:
+        data = await request.json()
+        status = data.get("status")
+        details = data.get("details", "")
+        if status not in ["ACTIVE", "STOPPED"]:
+            raise HTTPException(status_code=400, detail="Invalid status")
+        update_ai_status(status, details)
+        return {"status": "AI status updated"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -96,11 +129,14 @@ async def get_market_data_api():
 async def get_balance():
     try:
         if use_virtual_account:
+            update_ai_status("VIRTUAL MODE", "Running in virtual test account mode")
             return {"balance": round(virtual_balance, 2), "account": "virtual"}
         else:
             account = client.get_asset_balance(asset="USDT")
+            update_ai_status("ACTIVE", "Monitoring real account")
             return {"balance": float(account['free']), "account": "real"}
     except Exception as e:
+        update_ai_status("ERROR", "Balance fetch failed")
         raise HTTPException(status_code=500, detail="Balance fetch failed")
 
 @app.post("/api/set_preferences")
@@ -110,6 +146,7 @@ async def set_preferences(request: Request):
     ai_managed_preferences = data.get("ai_managed_preferences", ai_managed_preferences)
     auto_trade_enabled = data.get("auto_trade_enabled", auto_trade_enabled)
     use_virtual_account = data.get("virtual", use_virtual_account)
+    update_ai_status("UPDATING", "Preferences updated by user")
     return {
         "status": "Preferences updated",
         "ai_managed_preferences": ai_managed_preferences,
@@ -124,6 +161,8 @@ async def auto_trade(request: Request):
         model_type = data.get("model", "ensemble")
         confidence = float(data.get("confidence_threshold", 0.5))
 
+        update_ai_status("ACTIVE", "Trading decision in progress")
+
         if model_type == "lstm":
             prediction = lstm_model.predict(df_data)
         elif model_type == "trading_ai":
@@ -137,8 +176,11 @@ async def auto_trade(request: Request):
             prediction = np.mean([pred_lstm, pred_ai, pred_rl])
 
         action = "buy" if prediction > confidence else "sell"
+
+        update_ai_status("ACTIVE", f"Monitoring... Last decision: {action.upper()}")
         return {"final_predicted_price": float(prediction), "action": action}
     except Exception as e:
+        update_ai_status("ERROR", "Auto trade failed")
         raise HTTPException(status_code=500, detail="Auto trade failed")
 
 @app.post("/api/order")
@@ -150,11 +192,14 @@ async def place_order(request: Request):
         order_type = body.get("type", "market")
         quantity = float(body["amount"])
 
+        update_ai_status("ACTIVE", "Placing order...")
+
         if use_virtual_account:
             if side == "buy":
-                virtual_balance -= quantity * 100  # simulate price
+                virtual_balance -= quantity * 100
             else:
                 virtual_balance += quantity * 100
+            update_ai_status("VIRTUAL MODE", "Virtual order executed")
             return {"status": "virtual order executed", "balance": round(virtual_balance, 2)}
 
         else:
@@ -163,13 +208,16 @@ async def place_order(request: Request):
                 side=side.upper(),
                 quantity=quantity
             )
+            update_ai_status("ACTIVE", "Real order executed")
             return {"status": "real order executed", "order": result}
     except Exception as e:
+        update_ai_status("ERROR", "Order failed")
         raise HTTPException(status_code=500, detail="Order failed")
 
 @app.post("/api/emergency_stop")
 async def emergency_stop():
     scheduler.pause()
+    update_ai_status("EMERGENCY STOP", "Trading halted by emergency trigger")
     return {"status": "Emergency stop triggered"}
 
 @app.post("/api/ai/chat")
@@ -180,20 +228,18 @@ async def chat_with_ai(request: Request):
         if not user_input:
             raise ValueError("Message is empty")
 
-        logger.debug(f"User input: {user_input}")
+        update_ai_status("STANDBY", "Responding to AI query")
 
-        # Using the new openai API
         response = openai.Completion.create(
             model="gpt-3.5-turbo",
             prompt=user_input,
             max_tokens=150
         )
 
-        # Log the raw OpenAI response for debugging
-        logger.debug(f"OpenAI response: {response}")
-
+        update_ai_status("ACTIVE", "Monitoring...")
         return {"response": response.choices[0].text.strip()}
     except Exception as e:
+        update_ai_status("ERROR", "AI chat failed")
         logger.error(f"AI chat failed: {str(e)}")
         raise HTTPException(status_code=500, detail="AI chat failed")
 
@@ -202,18 +248,21 @@ async def health_check():
     try:
         client.ping()
         fetcher.fetch_ticker(config.TRADE_SYMBOL)
+        update_ai_status("ACTIVE", "System healthy and monitoring")
         return {"status": "healthy"}
     except Exception as e:
+        update_ai_status("ERROR", "Health check failed")
         raise HTTPException(status_code=500, detail="System not healthy")
 
-# Optional Webhook Listener
 @app.post("/webhook")
 async def webhook_listener(request: Request, x_signature: str = Header(None)):
     body = await request.body()
     request._body = body
     if not verify_webhook_signature(request, x_signature):
+        update_ai_status("ERROR", "Webhook signature mismatch")
         raise HTTPException(status_code=401, detail="Invalid signature")
 
+    update_ai_status("UPDATING", "Webhook received")
     return {"status": "Webhook received"}
 
 def verify_webhook_signature(request: Request, x_signature: str) -> bool:
@@ -225,12 +274,14 @@ def verify_webhook_signature(request: Request, x_signature: str) -> bool:
     ).hexdigest()
     return hmac.compare_digest(x_signature, computed_sig)
 
-# Scheduled Job
+# Background Job
 def run_trading_job():
     try:
         ticker = fetcher.fetch_ticker(config.TRADE_SYMBOL)
         logger.info(f"Scheduled fetch: {ticker}")
+        update_ai_status("ACTIVE", "Monitoring via scheduled fetch")
     except Exception as e:
+        update_ai_status("ERROR", "Scheduled job failed")
         logger.error(f"Job failed: {str(e)}")
 
 scheduler = BackgroundScheduler()

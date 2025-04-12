@@ -9,64 +9,68 @@
 </head>
 <body>
   <div id="container">
-    <div id="trading-info">
+    <header>
       <h1>Simtwo - AI Trading Dashboard</h1>
       <div id="current-symbol">Symbol: <span id="symbol">BTCUSDT</span></div>
       <div id="current-price">Price: <span id="price">Loading...</span></div>
-      <canvas id="chart-canvas" width="600" height="300"></canvas>
-    </div>
+    </header>
 
-    <div id="ai-status">AI Status: ACTIVE - Monitoring...</div>
+    <canvas id="chart-canvas" width="600" height="300"></canvas>
 
-    <!-- Model & Confidence -->
-    <div id="model-config">
-      <label for="model-select">Model:</label>
-      <select id="model-select">
-        <option value="ensemble">Ensemble (All Models)</option>
-        <option value="lstm">LSTM</option>
-        <option value="trading_ai">Trading AI</option>
-        <option value="rl">Reinforcement</option>
-      </select>
+    <section id="status-panel">
+      <div id="ai-status">AI Status: <span id="ai-status-indicator" class="active">ACTIVE</span> — Monitoring...</div>
+      <div id="balance">Balance: $200.00</div>
+    </section>
 
-      <label for="confidence-input">Confidence Threshold:</label>
-      <input id="confidence-input" type="number" step="0.01" min="0" max="1" value="0.5" />
-    </div>
+    <section id="controls">
+      <div id="model-config">
+        <label for="model-select">Model:</label>
+        <select id="model-select">
+          <option value="ensemble">Ensemble (All Models)</option>
+          <option value="lstm">LSTM</option>
+          <option value="trading_ai">Trading AI</option>
+          <option value="rl">Reinforcement</option>
+        </select>
 
-    <!-- Account Buttons -->
-    <div id="account-selection">
-      <button id="virtualAccountBtn">Virtual Account</button>
-      <button id="realAccountBtn">Real Account</button>
-    </div>
-    <div id="balance">Balance: $200.00</div>
+        <label for="confidence-input">Confidence Threshold:</label>
+        <input id="confidence-input" type="number" step="0.01" min="0" max="1" value="0.5" />
+      </div>
 
-    <!-- Auto Trade -->
-    <div id="order-section">
-      <button id="autoTradeButton">Start Auto Trading Now</button>
-      <select id="order-type">
-        <option value="limit">Limit</option>
-        <option value="market" selected>Market</option>
-      </select>
-      <input id="order-amount" type="number" step="0.001" placeholder="Order amount" />
-      <button id="place-buy-order">Buy</button>
-      <button id="place-sell-order">Sell</button>
-    </div>
+      <div id="account-selection">
+        <button id="virtualAccountBtn">Virtual Account</button>
+        <button id="realAccountBtn">Real Account</button>
+      </div>
 
-    <!-- Emergency Stop -->
-    <div id="emergency-stop">
-      <button id="emergency-stop-btn">Emergency Stop</button>
-    </div>
+      <div id="order-section">
+        <button id="autoTradeButton">Start Auto Trading</button>
+        <select id="order-type">
+          <option value="limit">Limit</option>
+          <option value="market" selected>Market</option>
+        </select>
+        <input id="order-amount" type="number" step="0.001" placeholder="Order amount" />
+        <button id="place-buy-order">Buy</button>
+        <button id="place-sell-order">Sell</button>
+      </div>
 
-    <!-- AI Chat -->
-    <div id="chatwithai">
+      <div id="ai-controls">
+        <button id="set-ai-active">Set AI Active</button>
+        <button id="set-ai-stopped">Set AI Stopped</button>
+      </div>
+
+      <div id="emergency-stop">
+        <button id="emergency-stop-btn">Emergency Stop</button>
+      </div>
+    </section>
+
+    <section id="chatwithai">
       <h3>Chat with AI</h3>
       <div id="chat-box"></div>
       <form id="chat-form">
         <input type="text" id="chat-input" placeholder="Ask AI..." />
         <button type="submit">Send</button>
       </form>
-    </div>
+    </section>
   </div>
-
   <script src="/static/js/app.js"></script>
 </body>
 </html>
