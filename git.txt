@@ -1,1 +1,7 @@
 git add . && git commit -m "Your commit message" && git rebase main && git push origin main
+
+
+
+
+
+cd /storage/emulated/0/simtwo/simtwo

@@ -70,6 +70,27 @@ class DataFetcher:
             logging.error(f"Error fetching balance: {str(e)}")
             raise
 
+    def fetch_chart_data(self, symbol=None, interval='1m', limit=20):
+        symbol = symbol or self.trade_symbol
+        logging.debug(f"Fetching chart data for symbol: {symbol}, interval: {interval}, limit: {limit}")
+        
+        try:
+            klines = self.client.get_klines(symbol=symbol, interval=interval, limit=limit)
+            return [
+                {
+                    "timestamp": k[0],
+                    "open": float(k[1]),
+                    "high": float(k[2]),
+                    "low": float(k[3]),
+                    "close": float(k[4]),
+                    "volume": float(k[5])
+                }
+                for k in klines
+            ]
+        except Exception as e:
+            logging.error(f"Error fetching chart data: {str(e)}")
+            return []
+
 # ✅ Convenience wrapper for quick access
 def get_market_data(api_key, api_secret, trade_symbol=None):
     fetcher = DataFetcher(api_key=api_key, api_secret=api_secret, trade_symbol=trade_symbol)
