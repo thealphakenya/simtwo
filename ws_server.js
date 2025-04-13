@@ -1,183 +1,132 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const priceElement = document.getElementById("price");
-  const chatForm = document.getElementById("chat-form");
-  const chatInput = document.getElementById("chat-input");
-  const chatBox = document.getElementById("chat-box");
-  const autoTradeBtn = document.getElementById("autoTradeButton");
-  const modelSelect = document.getElementById("model-select");
-  const confidenceInput = document.getElementById("confidence-input");
-  const emergencyBtn = document.getElementById("emergency-stop-btn");
-  const buyBtn = document.getElementById("place-buy-order");
-  const sellBtn = document.getElementById("place-sell-order");
-  const orderAmountInput = document.getElementById("order-amount");
-  const orderTypeSelect = document.getElementById("order-type");
-  const lstmInput = document.getElementById("lstm-weight");
-  const aiInput = document.getElementById("trading-ai-weight");
-  const rlInput = document.getElementById("reinforcement-weight");
-  const updateBtn = document.getElementById("update-strategy");
-  const aiStatusIndicator = document.getElementById("ai-status-indicator");
-  const themeToggle = document.getElementById("theme-toggle");
-  const themeLabel = document.getElementById("theme-label");
-  const symbolSelect = document.getElementById("symbol-select");
+const express = require("express");
+const https = require("https");
+const WebSocket = require("ws");
+const fetch = require("node-fetch");
+const fs = require("fs");
+const { execSync } = require("child_process");
 
-  let chart;
-  let socket;
-  let activeSymbol = symbolSelect.value;
+const app = express();
 
-  function showToast(message, type = "info") {
-    const toast = document.createElement("div");
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+const certPath = "certificate.crt";
+const keyPath = "private.key";
+
+const generateSelfSignedCerts = () => {
+  if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
+    console.log("Certificates not found. Generating self-signed certificates...");
+    execSync(`openssl req -nodes -new -x509 -keyout ${keyPath} -out ${certPath} -days 365 -subj "/C=US/ST=State/L=City/O=Company/CN=localhost"`);
+    console.log("Self-signed certificates generated.");
+  } else {
+    console.log("Certificates found.");
   }
+};
 
-  const savedTheme = localStorage.getItem("theme") || "dark";
-  document.body.classList.add(savedTheme);
-  themeToggle.checked = savedTheme === "light";
-  themeLabel.textContent = savedTheme === "light" ? "Light Mode" : "Dark Mode";
+generateSelfSignedCerts();
 
-  themeToggle.addEventListener("change", () => {
-    document.body.classList.toggle("dark");
-    document.body.classList.toggle("light");
-    const newTheme = document.body.classList.contains("light") ? "light" : "dark";
-    localStorage.setItem("theme", newTheme);
-    themeLabel.textContent = newTheme === "light" ? "Light Mode" : "Dark Mode";
-    updateChartTheme(newTheme);
-  });
+const options = {
+  cert: fs.readFileSync(certPath),
+  key: fs.readFileSync(keyPath),
+};
 
-  function updateChartTheme(theme) {
-    const isDark = theme === "dark";
-    const gridColor = isDark ? "#333" : "#ccc";
-    const textColor = isDark ? "#eee" : "#111";
+const server = https.createServer(options, app);
+const wss = new WebSocket.Server({ server, path: "/ws/stream" });
 
-    if (chart) {
-      chart.options.scales.x.ticks.color = textColor;
-      chart.options.scales.y.ticks.color = textColor;
-      chart.options.scales.x.grid.color = gridColor;
-      chart.options.scales.y.grid.color = gridColor;
-      chart.options.plugins.legend.labels.color = textColor;
-      chart.update();
-    }
-  }
+const symbols = ["btcusdt", "ethusdt"];
+const binanceURL = `wss://stream.binance.com:9443/stream?streams=${symbols.map(s => `${s}@trade`).join("/")}`;
+const BinanceWS = new WebSocket(binanceURL);
 
-  async function fetchPrice() {
+let latestData = {};
+let chartData = {};
+const maxChartPoints = 50;
+
+// P2P bot state
+let botRunning = false;
+let botBalance = 0;
+
+// Simulate bot toggle from frontend
+wss.on("connection", (ws) => {
+  console.log("Client connected to WebSocket.");
+
+  // Send initial P2P bot status
+  ws.send(JSON.stringify({
+    type: "bot_status",
+    running: botRunning,
+    balance: botBalance,
+  }));
+
+  ws.on("message", (msg) => {
     try {
-      const res = await fetch("/api/market_data");
-      const data = await res.json();
-      if (data.price) {
-        priceElement.textContent = `$${parseFloat(data.price).toFixed(2)}`;
-      } else {
-        priceElement.textContent = "Error";
+      const data = JSON.parse(msg);
+      if (data.type === "toggle_bot") {
+        botRunning = !botRunning;
+        botBalance = Math.random() * 1000; // Simulated new balance
+
+        const update = {
+          type: "bot_status",
+          running: botRunning,
+          balance: botBalance.toFixed(2),
+        };
+
+        wss.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(update));
+          }
+        });
+
+        console.log(`Bot toggled. Running: ${botRunning}, Balance: $${botBalance.toFixed(2)}`);
       }
-    } catch {
-      priceElement.textContent = "Error";
-    }
-  }
-
-  async function fetchBalance() {
-    try {
-      const res = await fetch("/api/balance");
-      const data = await res.json();
-      const balanceEl = document.getElementById("balance-display");
-      if (balanceEl) {
-        balanceEl.textContent = `Balance (${data.account}): $${data.balance.toFixed(2)}`;
-      }
-    } catch (err) {
-      console.error("Balance fetch failed", err);
-    }
-  }
-
-  async function loadMemory() {
-    try {
-      const res = await fetch("/api/memory");
-      const data = await res.json();
-      chatBox.innerHTML = "";
-      data.forEach((entry) => {
-        appendChatMessage("You", entry.user);
-        appendChatMessage("AI", entry.ai);
-      });
-    } catch (err) {
-      console.error("Failed to load memory", err);
-    }
-  }
-
-  chatForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const msg = chatInput.value.trim();
-    if (!msg) return;
-    appendChatMessage("You", msg);
-    chatInput.value = "";
-
-    try {
-      const res = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg })
-      });
-
-      const data = await res.json();
-      appendChatMessage("AI", data.response || "Error");
-      loadMemory();
-    } catch (err) {
-      console.error("Chat request failed", err);
-      appendChatMessage("AI", "Error");
+    } catch (e) {
+      console.warn("Invalid WebSocket message:", msg);
     }
   });
+});
 
-  function appendChatMessage(sender, message) {
-    const el = document.createElement("div");
-    el.className = "chat-message";
-    el.innerHTML = `<strong>${sender}:</strong> ${message}`;
-    chatBox.appendChild(el);
-    chatBox.scrollTop = chatBox.scrollHeight;
+BinanceWS.onmessage = async (event) => {
+  const stream = JSON.parse(event.data);
+  const symbol = stream.stream.split("@")[0];
+  const payload = stream.data;
+
+  const price = parseFloat(payload.p);
+  const timestamp = new Date().toISOString();
+  const formattedSymbol = symbol.toUpperCase();
+
+  const trade = {
+    time: timestamp,
+    price,
+    symbol: formattedSymbol
+  };
+
+  latestData[formattedSymbol] = trade;
+
+  if (!chartData[formattedSymbol]) chartData[formattedSymbol] = [];
+  chartData[formattedSymbol].push(trade);
+  if (chartData[formattedSymbol].length > maxChartPoints) {
+    chartData[formattedSymbol].shift();
   }
 
-  function initializeWebSocket() {
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsUrl = `${protocol}://${window.location.host}/ws/stream`;
-    socket = new WebSocket(wsUrl);
-
-    socket.onopen = () => {
-      console.log("WebSocket connected.");
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const newData = JSON.parse(event.data);
-
-        if (Array.isArray(newData.chart)) {
-          updateChart(newData.chart);
-        }
-
-        if (newData.latest) {
-          updatePrices(newData.latest);
-        }
-      } catch (e) {
-        console.error("Invalid WebSocket message:", e);
-      }
-    };
-
-    socket.onerror = (err) => {
-      console.error("WebSocket error:", err);
-      showToast("WebSocket error. Retrying...", "error");
-    };
-
-    socket.onclose = () => {
-      console.warn("WebSocket closed. Reconnecting in 5s...");
-      showToast("WebSocket closed. Reconnecting...", "warning");
-      setTimeout(initializeWebSocket, 5000);
-    };
+  try {
+    const res = await fetch("http://backend:5000/api/market_data");
+    if (res.ok) {
+      const extra = await res.json();
+      Object.assign(latestData[formattedSymbol], extra);
+    }
+  } catch (err) {
+    console.warn(`Failed to fetch internal data: ${err.message}`);
   }
 
-  function updateChart(chartData) {
-    if (!chart) return;
+  const updatePayload = {
+    type: "market_update",
+    latest: latestData[formattedSymbol],
+    chart: chartData[formattedSymbol]
+  };
 
-    const symbolMap = {};
-    chartData.forEach(({ symbol, time, price }) => {
-      if (!symbolMap[symbol]) symbolMap[symbol] = { labels: [], prices: [] };
-      symbolMap[symbol].labels.push(time);
-      symbolMap[symbol].prices.push(price);
-    });
+  const message = JSON.stringify(updatePayload);
+  wss.clients.forEach(client => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+};
 
-    const labels = symbolMap[Object.keys(symbolMap)[00
+server.listen(8443, () => {
+  console.log("Server listening on https://localhost:8443");
+});
