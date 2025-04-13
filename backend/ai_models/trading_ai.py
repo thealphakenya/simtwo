@@ -11,15 +11,15 @@ logger = logging.getLogger(__name__)
 
 class TradingAI:
     def __init__(self, model_type="LSTM", time_steps=60, n_features=1, api_key=None, api_secret=None):
-        logger.info("Initializing TradingAI with model_type=%s", model_type)
         self.model_type = model_type.upper()
         self.time_steps = time_steps
         self.n_features = n_features
+        logger.info("Initializing TradingAI with model_type=%s", self.model_type)
         self.model = self._init_model(self.model_type, time_steps, n_features, api_key, api_secret)
 
     def _init_model(self, model_type, time_steps, n_features, api_key, api_secret):
         logger.debug("Requested model_type: '%s'", model_type)
-        model_type = (model_type or 'LSTM').strip().upper()
+        model_type = model_type.strip().upper()
 
         if model_type == 'LSTM':
             return LSTMTradingModel(time_steps, n_features)
@@ -28,50 +28,53 @@ class TradingAI:
         elif model_type == 'TRANSFORMER':
             return TransformerTradingModel(time_steps, n_features)
         elif model_type == 'REINFORCEMENTLEARNING':
-            state_size = 100  # Can be adjusted based on use case
-            action_size = 3   # e.g., Buy, Sell, Hold
-            return RLTradingModel(state_size, action_size)
+            return RLTradingModel(state_size=100, action_size=3)
         else:
             logger.warning("Invalid model_type '%s'. Defaulting to LSTM.", model_type)
             return LSTMTradingModel(time_steps, n_features)
 
     def _prepare_input(self, data, time_steps, n_features):
         if isinstance(data, pd.DataFrame):
-            datetime_cols = data.select_dtypes(include=['datetime64[ns]', 'datetime64']).columns.tolist()
+            datetime_cols = data.select_dtypes(include=['datetime64']).columns.tolist()
             if datetime_cols:
                 logger.warning("Dropping datetime columns from input data: %s", datetime_cols)
-            data = data.select_dtypes(exclude=['datetime64[ns]', 'datetime64'])
+                data = data.drop(columns=datetime_cols)
+            data = data.select_dtypes(include=[np.number])
 
-        data = np.array(data)
-        if data.shape[0] < time_steps:
-            logger.error("Not enough data points to reshape. Returning empty array.")
-            return np.array([])
+        data = np.asarray(data).astype(np.float32)
+        original_len = len(data)
+
+        if original_len < time_steps:
+            logger.error("Insufficient data: got %d rows, require at least %d.", original_len, time_steps)
+            return np.empty((0, time_steps, n_features))
 
         try:
+            num_sequences = original_len - time_steps
             reshaped_data = np.array([
                 data[i:i + time_steps]
-                for i in range(len(data) - time_steps)
+                for i in range(num_sequences)
             ])
-            reshaped_data = reshaped_data.reshape((reshaped_data.shape[0], time_steps, n_features))
+            reshaped_data = reshaped_data.reshape((-1, time_steps, n_features))
+            logger.debug("Reshaped input to %s", reshaped_data.shape)
             return reshaped_data
         except Exception as e:
-            logger.error(f"Error while reshaping data: {e}")
-            return np.array([])
+            logger.error("Error while reshaping data: %s", str(e))
+            return np.empty((0, time_steps, n_features))
 
     def predict(self, data):
         if isinstance(self.model, RLTradingModel):
-            logger.warning("Predict called on RLTradingModel. Returning action for dummy state.")
-            dummy_state = 0
-            return self.model.choose_action(dummy_state)
+            logger.warning("Predict called on RLTradingModel. Returning dummy action.")
+            return self.model.choose_action(0)
 
-        data = self._prepare_input(data, self.time_steps, self.n_features)
-        if data.size == 0:
+        processed = self._prepare_input(data, self.time_steps, self.n_features)
+        if processed.size == 0:
+            logger.warning("No data to predict on after preprocessing.")
             return None
-        return self.model.predict(data)
+        return self.model.predict(processed)
 
     def train(self, data, labels):
         if isinstance(self.model, RLTradingModel):
-            logger.warning("Training RLTradingModel. Running dummy loop for illustration.")
+            logger.warning("Training RLTradingModel in dummy loop.")
             for state in range(99):
                 action = self.model.choose_action(state)
                 reward = np.random.rand()
@@ -79,12 +82,13 @@ class TradingAI:
                 self.model.learn(state, action, reward, next_state)
             return "RL model trained (dummy loop)"
 
-        data = self._prepare_input(data, self.time_steps, self.n_features)
-        if data.size == 0:
+        processed = self._prepare_input(data, self.time_steps, self.n_features)
+        if processed.size == 0:
+            logger.warning("No data to train on after preprocessing.")
             return None
-        return self.model.train(data, labels)
+        return self.model.train(processed, labels)
 
     def fit_predict(self, data, labels):
-        logger.info("Running fit_predict sequence")
+        logger.info("Running fit_predict sequence.")
         self.train(data, labels)
         return self.predict(data)
