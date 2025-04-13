@@ -1,5 +1,6 @@
 import logging
 import pandas as pd
+import numpy as np  # Added numpy import
 from backend.ai_models.lstm_model import LSTMTradingModel
 from backend.ai_models.gru_model import GRUTradingModel
 from backend.ai_models.transformer_model import TransformerTradingModel
