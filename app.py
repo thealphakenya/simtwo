@@ -7,10 +7,11 @@ from flask_socketio import SocketIO
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.client import Client
 
+# Correcting imports
 from backend.trading_logic.order_execution import OrderExecution
-from ai_models.model import TradingAI
-from training_logic.order_execution import execute_order
-from data.data_fetcher import DataFetcher
+from backend.ai_models import TradingAI  # Corrected the import path
+from backend.data.data_fetcher import DataFetcher  # Corrected import path
+from backend.training_logic.order_execution import execute_order  # Verify this path
 
 # ===========================
 # 🔧 Config

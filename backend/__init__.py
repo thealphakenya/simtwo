@@ -1,5 +1,3 @@
-# backend/__init__.py
-
 from .core import StatusManager
 from .models import TradingAI
 from .data import DataFetcher, get_market_data
