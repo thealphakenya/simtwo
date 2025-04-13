@@ -7,9 +7,9 @@ from binance.enums import (
     ORDER_TYPE_MARKET, ORDER_TYPE_LIMIT,
     TIME_IN_FORCE_GTC
 )
-from backend.ai_models.model import TradingAI, ReinforcementLearning
-from backend.victorq.neutralizer import TradingHelper  # Shared logic
-from .logic import TradingLogic  # Use direct relative import to avoid circular import
+from backend.ai_models import TradingAI, ReinforcementLearning  # Corrected import
+from backend.victorq.neutralizer import TradingHelper  # This remains the same as you didn't mention changes
+from .logic import TradingLogic  # This remains the same as a direct relative import
 
 class OrderExecution:
     def __init__(self, api_key, api_secret):
