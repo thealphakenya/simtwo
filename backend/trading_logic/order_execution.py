@@ -10,6 +10,7 @@ from binance.enums import (
 from backend.ai_models import TradingAI, ReinforcementLearning  # Corrected import
 from backend.victorq.neutralizer import TradingHelper  # This remains the same as you didn't mention changes
 from .logic import TradingLogic  # This remains the same as a direct relative import
+from backend.ai_models.neural_network import NeuralNetwork  # Added import
 
 class OrderExecution:
     def __init__(self, api_key, api_secret):
@@ -20,6 +21,9 @@ class OrderExecution:
         # Initialize the ReinforcementLearning model here
         self.reinforcement_model = ReinforcementLearning(api_key, api_secret, time_steps=10, n_features=10)
         
+        # Initialize the NeuralNetwork model
+        self.nn_model = NeuralNetwork(input_dim=10, output_dim=1)  # Assuming input_dim=10, output_dim=1 for regression
+
         # Ensure your data (X, y) is prepared somewhere in your code for training
         self.X = None  # Replace with actual feature data
         self.y = None  # Replace with actual target data
@@ -107,7 +111,7 @@ class OrderExecution:
     def calculate_position_size(self, balance):
         return TradingHelper.calculate_position_size(balance)
 
-    # Add this method to trigger model training
+    # Add this method to trigger model training for Reinforcement Learning
     def train_reinforcement_model(self, epochs=50, batch_size=32):
         if self.X is None or self.y is None:
             logging.error("Feature data (X) or target data (y) not provided.")
@@ -116,3 +120,24 @@ class OrderExecution:
         # Train the reinforcement learning model using train_model
         self.reinforcement_model.train_model(self.X, self.y, epochs=epochs, batch_size=batch_size)
         logging.info(f"Training complete for {epochs} epochs.")
+
+    # Add a method for training the NeuralNetwork
+    def train_nn_model(self, x_train, y_train, epochs=10, batch_size=32):
+        if x_train is None or y_train is None:
+            logging.error("Training data not provided.")
+            return
+
+        # Train the neural network model
+        self.nn_model.train(x_train, y_train, epochs=epochs, batch_size=batch_size)
+        logging.info(f"Neural Network training complete for {epochs} epochs.")
+
+    # Method to predict using the neural network
+    def predict_with_nn(self, x_input):
+        if x_input is None:
+            logging.error("Input data not provided for prediction.")
+            return
+
+        # Predict using the neural network model
+        prediction = self.nn_model.predict(x_input)
+        logging.info(f"Prediction: {prediction}")
+        return prediction

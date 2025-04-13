@@ -5,6 +5,7 @@ from tensorflow.keras.layers import Input, LSTM, Dense, Dropout
 import logging
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 class LSTMTradingModel:
     def __init__(self, time_steps=60, n_features=1):
@@ -57,4 +58,12 @@ class LSTMTradingModel:
     def predict(self, x_input):
         x_input = self._clean_input(x_input)
         logger.info(f"Predicting on input shape: {x_input.shape}")
-        return self.model.predict(x_input, verbose=0)
+        pred = self.model.predict(x_input, verbose=0)
+        logger.debug(f"Raw prediction output shape: {pred.shape}, type: {type(pred)}")
+        
+        if isinstance(pred, np.ndarray) and pred.ndim == 2 and pred.shape[1] == 1:
+            return float(pred[0][0])
+        elif isinstance(pred, np.ndarray):
+            return float(pred[0])
+        else:
+            return float(pred)
