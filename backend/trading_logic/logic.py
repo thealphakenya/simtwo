@@ -1,9 +1,9 @@
 import logging
-from ..ai_models.model import TradingAI  # Go up one level to access ai_models
+from ..ai_models.trading_ai import TradingAI  # Correct import path
 
 class TradingLogic:
     def __init__(self):
-        self.model = TradingAI()
+        self.model = TradingAI()  # Initialize the TradingAI model
         logging.basicConfig(level=logging.INFO)
 
     def analyze_market(self, market_data):
@@ -11,7 +11,7 @@ class TradingLogic:
         Use AI model to analyze market data and generate trading signals.
         """
         try:
-            signal = self.model.predict(market_data)
+            signal = self.model.predict(market_data)  # Use the predict method of TradingAI
             logging.info(f"Generated trading signal: {signal}")
             return signal
         except Exception as e:
