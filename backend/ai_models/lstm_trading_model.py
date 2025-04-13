@@ -1,6 +1,5 @@
-# backend/ai_models/lstm_trading_model.py
-
 import numpy as np
+import pandas as pd
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, LSTM, Dropout, Dense
 from .base import BaseTradingModel
@@ -27,10 +26,16 @@ class LSTMTradingModel(BaseTradingModel):
         model.compile(optimizer='adam', loss='mean_squared_error')
         return model
 
-    def train(self, X, y, epochs=10, batch_size=32):
+    def _prepare_input(self, X):
+        if isinstance(X, pd.DataFrame):
+            X = X.select_dtypes(exclude=['datetime64[ns]', 'datetime64']).values
         X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
+        return X
+
+    def train(self, X, y, epochs=10, batch_size=32):
+        X = self._prepare_input(X)
         self.model.fit(X, y, epochs=epochs, batch_size=batch_size, verbose=0)
 
     def predict(self, X):
-        X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
+        X = self._prepare_input(X)
         return self.model.predict(X, verbose=0)
