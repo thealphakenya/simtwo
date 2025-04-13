@@ -1,4 +1,5 @@
 import logging
+import pandas as pd
 from backend.ai_models.lstm_model import LSTMTradingModel
 from backend.ai_models.gru_model import GRUTradingModel
 from backend.ai_models.transformer_model import TransformerTradingModel
@@ -12,10 +13,7 @@ class TradingAI:
         self.model = self._init_model(model_type, time_steps, n_features, api_key, api_secret)
 
     def _init_model(self, model_type, time_steps, n_features, api_key, api_secret):
-        # Debug log for incoming model_type
         print(f"[DEBUG] Requested model_type: '{model_type}'")
-
-        # Normalize model_type safely
         model_type = (model_type or 'LSTM').strip().upper()
 
         if model_type == 'LSTM':
@@ -30,8 +28,18 @@ class TradingAI:
             logger.warning("Invalid model_type '%s'. Defaulting to LSTM.", model_type)
             return LSTMTradingModel(time_steps, n_features)
 
+    def _clean_data(self, data):
+        if isinstance(data, pd.DataFrame):
+            datetime_cols = data.select_dtypes(include=['datetime64[ns]', 'datetime64']).columns.tolist()
+            if datetime_cols:
+                logger.warning("Dropping datetime columns from input data: %s", datetime_cols)
+            return data.select_dtypes(exclude=['datetime64[ns]', 'datetime64'])
+        return data
+
     def predict(self, data):
+        data = self._clean_data(data)
         return self.model.predict(data)
 
     def train(self, data):
+        data = self._clean_data(data)
         return self.model.train(data)
