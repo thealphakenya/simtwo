@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const API_BASE = window.API_BASE || "http://backend:5000";
+
   const priceElement = document.getElementById("price");
   const chatForm = document.getElementById("chat-form");
   const chatInput = document.getElementById("chat-input");
@@ -61,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function fetchPrice() {
     try {
-      const res = await fetch("/api/market_data");
+      const res = await fetch(`${API_BASE}/api/market_data`);
       const data = await res.json();
       if (data.price) {
         priceElement.textContent = `$${parseFloat(data.price).toFixed(2)}`;
@@ -75,7 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function fetchBalance() {
     try {
-      const res = await fetch("/api/balance");
+      const res = await fetch(`${API_BASE}/api/balance`);
       const data = await res.json();
       const balanceEl = document.getElementById("balance-display");
       if (balanceEl) {
@@ -87,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadMemory() {
-    const res = await fetch("/api/memory");
+    const res = await fetch(`${API_BASE}/api/memory`);
     const data = await res.json();
     chatBox.innerHTML = "";
     data.forEach((entry) => {
@@ -103,7 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
     appendChatMessage("You", msg);
     chatInput.value = "";
 
-    const res = await fetch("/api/ai/chat", {
+    const res = await fetch(`${API_BASE}/api/ai/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: msg })
@@ -124,7 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function initializeWebSocket() {
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsUrl = `${protocol}://${window.location.host}/ws/stream`; // Fixed WebSocket URL path
+    const wsUrl = `${protocol}://${window.location.hostname}:8443/ws/stream`;
     socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
@@ -191,7 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updatePrices(latestData) {
-    priceElement.innerHTML = ""; // Clear current display
+    priceElement.innerHTML = "";
     Object.values(latestData).forEach(({ symbol, price }) => {
       const div = document.createElement("div");
       div.textContent = `${symbol}: $${parseFloat(price).toFixed(2)}`;
@@ -201,7 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function setupChart() {
     const ctx = document.getElementById("chart-canvas").getContext("2d");
-    const res = await fetch("/api/ohlcv");
+    const res = await fetch(`${API_BASE}/api/ohlcv`);
     const data = await res.json();
 
     chart = new Chart(ctx, {
@@ -233,7 +235,7 @@ document.addEventListener("DOMContentLoaded", () => {
       reinforcement: parseFloat(rlInput.value)
     };
 
-    const res = await fetch("/api/set_preferences", {
+    const res = await fetch(`${API_BASE}/api/set_preferences`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -248,7 +250,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const type = orderTypeSelect.value;
     if (isNaN(amount)) return showToast("Invalid amount.", "error");
 
-    const res = await fetch("/api/place_order", {
+    const res = await fetch(`${API_BASE}/api/place_order`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ side, amount, type })

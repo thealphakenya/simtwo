@@ -4,53 +4,23 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: trading_backend
-    volumes:
-      - .:/app
-      - ./certs:/app/certs
+    container_name: simtwo_backend
     ports:
       - "5000:5000"
-    depends_on:
-      - websocket
-    environment:
-      - FLASK_APP=app.py
-      - FLASK_ENV=development
-    restart: always
     networks:
-      - trading_network
+      - simtwo-net
 
-  websocket:
-    image: node:18-slim
-    container_name: websocket_server
-    working_dir: /app
-    volumes:
-      - .:/app
-      - ./certs:/app/certs
+  ws-server:
+    build:
+      context: ./ws-server
+    container_name: simtwo_ws
     ports:
       - "8765:8765"
-    command: ["node", "ws_server.js"]
-    restart: always
-    environment:
-      - PORT=8765
-    networks:
-      - trading_network
-
-  nginx:
-    image: nginx:alpine
-    container_name: nginx_proxy
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certs:/etc/ssl/certs
-      - ./frontend:/usr/share/nginx/html:ro
-    ports:
-      - "443:443"
     depends_on:
       - backend
-      - websocket
     networks:
-      - trading_network
+      - simtwo-net
 
 networks:
-  trading_network:
+  simtwo-net:
     driver: bridge
