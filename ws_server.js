@@ -1,5 +1,4 @@
 const express = require("express");
-const http = require("http");
 const https = require("https");
 const WebSocket = require("ws");
 const fetch = require("node-fetch");
@@ -8,30 +7,24 @@ const { execSync } = require("child_process");
 
 const app = express();
 
-// Paths for the certificate and key
 const certPath = "certificate.crt";
 const keyPath = "private.key";
 
-// Function to check if certificates exist and generate them if not
 const generateSelfSignedCerts = () => {
   if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
     console.log("Certificates not found. Generating self-signed certificates...");
-    
-    // Generate certificates using OpenSSL command
     execSync(`openssl req -nodes -new -x509 -keyout ${keyPath} -out ${certPath} -days 365 -subj "/C=US/ST=State/L=City/O=Company/CN=localhost"`);
-    
     console.log("Self-signed certificates generated.");
   } else {
     console.log("Certificates found.");
   }
 };
 
-// Generate certificates if they don't exist
 generateSelfSignedCerts();
 
 const options = {
-  cert: fs.readFileSync(certPath),  // Read the certificate
-  key: fs.readFileSync(keyPath),    // Read the private key
+  cert: fs.readFileSync(certPath),
+  key: fs.readFileSync(keyPath),
 };
 
 const server = https.createServer(options, app);
@@ -42,9 +35,7 @@ const binanceURL = `wss://stream.binance.com:9443/stream?streams=${symbols.map(s
 const BinanceWS = new WebSocket(binanceURL);
 
 let latestData = {};
-let chartData = {};  // Collect data for charting
-
-// Store recent history (e.g. last 50 trades)
+let chartData = {};
 const maxChartPoints = 50;
 
 BinanceWS.onmessage = async (event) => {
@@ -54,7 +45,6 @@ BinanceWS.onmessage = async (event) => {
 
   const price = parseFloat(payload.p);
   const timestamp = new Date().toISOString();
-
   const formattedSymbol = symbol.toUpperCase();
 
   const trade = {
@@ -65,16 +55,15 @@ BinanceWS.onmessage = async (event) => {
 
   latestData[formattedSymbol] = trade;
 
-  // Maintain limited chart history
   if (!chartData[formattedSymbol]) chartData[formattedSymbol] = [];
   chartData[formattedSymbol].push(trade);
   if (chartData[formattedSymbol].length > maxChartPoints) {
-    chartData[formattedSymbol].shift();  // Remove oldest
+    chartData[formattedSymbol].shift();
   }
 
-  // Optionally augment with your own backend API data
+  // Updated line: use 'backend' instead of 'localhost'
   try {
-    const res = await fetch("http://localhost:5000/api/market_data");
+    const res = await fetch("http://backend:5000/api/market_data");
     if (res.ok) {
       const extra = await res.json();
       Object.assign(latestData[formattedSymbol], extra);
@@ -83,7 +72,6 @@ BinanceWS.onmessage = async (event) => {
     console.warn(`Failed to fetch internal data: ${err.message}`);
   }
 
-  // Broadcast current single latestData and full chartData
   const updatePayload = {
     latest: latestData[formattedSymbol],
     chart: chartData[formattedSymbol]
@@ -97,17 +85,6 @@ BinanceWS.onmessage = async (event) => {
   });
 };
 
-// On new client connection, send current data
-wss.on("connection", (ws) => {
-  Object.keys(latestData).forEach(symbol => {
-    ws.send(JSON.stringify({
-      latest: latestData[symbol],
-      chart: chartData[symbol] || []
-    }));
-  });
-});
-
-const PORT = process.env.PORT || 8765;
-server.listen(PORT, () => {
-  console.log(`WebSocket server listening on port ${PORT}`);
+server.listen(8443, () => {
+  console.log("Server listening on https://localhost:8443");
 });

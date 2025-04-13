@@ -7,9 +7,9 @@ from flask_socketio import SocketIO
 from apscheduler.schedulers.background import BackgroundScheduler
 from binance.client import Client
 
-# Correcting imports
+# Corrected imports
 from backend.trading_logic.order_execution import OrderExecution
-from backend.ai_models import TradingAI  # Corrected the import path
+from backend.ai_models import TradingAI  # Corrected import path
 from backend.data.data_fetcher import DataFetcher  # Corrected import path
 from backend.training_logic.order_execution import execute_order  # Verify this path
 
@@ -96,16 +96,20 @@ def serve_frontend(path):
 @app.route('/api/market_data')
 def get_market_data_api():
     try:
-        return jsonify(fetcher.fetch_ticker(config.TRADE_SYMBOL))
+        data = fetcher.fetch_ticker(config.TRADE_SYMBOL)
+        return jsonify(data)
     except Exception as e:
+        logging.error(f"Error fetching market data: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/order_book')
 def order_book():
     symbol = request.args.get('symbol', config.TRADE_SYMBOL)
     try:
-        return jsonify(fetcher.fetch_order_book(symbol))
+        data = fetcher.fetch_order_book(symbol)
+        return jsonify(data)
     except Exception as e:
+        logging.error(f"Error fetching order book: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/ohlcv')
@@ -115,13 +119,16 @@ def ohlcv():
         df = fetcher.fetch_ohlcv_data(symbol)
         return df.to_json(orient='records')
     except Exception as e:
+        logging.error(f"Error fetching OHLCV data: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/balance')
 def balance():
     try:
-        return jsonify(fetcher.fetch_balance())
+        data = fetcher.fetch_balance()
+        return jsonify(data)
     except Exception as e:
+        logging.error(f"Error fetching balance: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/place_order', methods=['POST'])
@@ -136,6 +143,7 @@ def place_order():
         update_ai_status("ACTIVE — Trading Decision Made", f"Order Placed: {order_type.upper()} {symbol} {quantity}")
         return jsonify(result)
     except Exception as e:
+        logging.error(f"Error placing order: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/ai_predict', methods=['POST'])
@@ -150,6 +158,7 @@ def ai_predict():
         update_ai_status("ACTIVE — Monitoring...", f"Prediction Result: {prediction.tolist()}")
         return jsonify({"prediction": prediction.tolist()})
     except Exception as e:
+        logging.error(f"Error predicting: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/set_preferences', methods=['POST'])
@@ -171,8 +180,10 @@ def get_ai_status():
 @app.route('/api/run_simulation', methods=['POST'])
 def run_simulation():
     try:
-        return jsonify(simulate_trading_strategy())
+        result = simulate_trading_strategy()
+        return jsonify(result)
     except Exception as e:
+        logging.error(f"Error running simulation: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/emergency_stop', methods=['POST'])
@@ -219,26 +230,28 @@ atexit.register(lambda: scheduler.shutdown())
 
 @app.route('/health')
 def health_check():
+    health_data = {"status": "healthy", "message": "All systems running smoothly."}
     try:
-        health_data = {
-            "status": "healthy",
-            "message": "All systems running smoothly."
-        }
+        # Check Binance API connectivity
         try:
             client.ping()
             health_data["binance_api"] = "Connected"
         except Exception as e:
             health_data["binance_api"] = f"Failed: {str(e)}"
-
+        
+        # Check DataFetcher functionality
         try:
             fetcher.fetch_ticker(config.TRADE_SYMBOL)
             health_data["data_fetcher"] = "Working"
         except Exception as e:
             health_data["data_fetcher"] = f"Failed: {str(e)}"
-
+        
         return jsonify(health_data)
+    
     except Exception as e:
-        return jsonify({"status": "unhealthy", "error": str(e)}), 500
+        health_data["status"] = "unhealthy"
+        health_data["error"] = str(e)
+        return jsonify(health_data), 500
 
 # ===========================
 # ▶️ App Launch

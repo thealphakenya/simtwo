@@ -123,8 +123,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function initializeWebSocket() {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = `${protocol}://${window.location.host}/ws/stream`; // Fixed WebSocket URL path
     socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
