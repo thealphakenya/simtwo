@@ -9,18 +9,24 @@ ENV CUDA_VISIBLE_DEVICES=-1 \
     PYTHONUNBUFFERED=1
 
 RUN apt-get update && \
-    apt-get install -y gcc libpq-dev curl build-essential libatlas-base-dev libopenblas-dev python3-pip && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends \
+        gcc \
+        libpq-dev \
+        curl \
+        build-essential \
+        libatlas-base-dev \
+        libopenblas-dev \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 
 RUN python -m pip install --no-cache-dir --upgrade pip
 
+RUN python -m pip install --no-cache-dir -r requirements.txt
+
 COPY ./backend /app/backend
 
 ENV PYTHONPATH="${PYTHONPATH}:/app/backend/ai_models"
-
-RUN python -m pip install --no-cache-dir -r requirements.txt
 
 RUN find /app -name '__pycache__' -type d -exec rm -r {} +
 
