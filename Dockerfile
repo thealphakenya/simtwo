@@ -18,6 +18,8 @@ RUN python -m pip install --no-cache-dir --upgrade pip
 
 COPY ./backend /app/backend
 
+ENV PYTHONPATH="${PYTHONPATH}:/app/backend/ai_models"
+
 RUN python -m pip install --no-cache-dir -r requirements.txt
 
 RUN find /app -name '__pycache__' -type d -exec rm -r {} +
