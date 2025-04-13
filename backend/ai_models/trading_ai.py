@@ -1,6 +1,6 @@
 import logging
 import pandas as pd
-import numpy as np  # ✅ Needed for array conversion and reshaping
+import numpy as np
 
 from backend.ai_models.lstm_model import LSTMTradingModel
 from backend.ai_models.gru_model import GRUTradingModel
@@ -15,60 +15,55 @@ class TradingAI:
         self.model = self._init_model(model_type, time_steps, n_features, api_key, api_secret)
 
     def _init_model(self, model_type, time_steps, n_features, api_key, api_secret):
-        model_type_input = model_type or 'LSTM'
-        model_type_clean = model_type_input.strip().lower()
-        print(f"[DEBUG] Requested model_type: '{model_type_clean}'")
+        print(f"[DEBUG] Requested model_type: '{model_type}'")
+        model_type = (model_type or 'LSTM').strip().upper()
 
-        if model_type_clean in ['lstm']:
+        if model_type == 'LSTM':
             return LSTMTradingModel(time_steps, n_features)
-        elif model_type_clean in ['gru']:
+        elif model_type == 'GRU':
             return GRUTradingModel(time_steps, n_features)
-        elif model_type_clean in ['transformer']:
+        elif model_type == 'TRANSFORMER':
             return TransformerTradingModel(time_steps, n_features)
-        elif model_type_clean in ['reinforcement', 'reinforcementlearning', 'rl']:
-            return RLTradingModel(api_key, api_secret)
+        elif model_type == 'REINFORCEMENTLEARNING':
+            state_size = 100  # You can adjust this based on your use case
+            action_size = 3   # e.g., Buy, Sell, Hold
+            return RLTradingModel(state_size, action_size)
         else:
-            logger.warning("Invalid model_type '%s'. Defaulting to LSTM.", model_type_clean)
+            logger.warning("Invalid model_type '%s'. Defaulting to LSTM.", model_type)
             return LSTMTradingModel(time_steps, n_features)
 
     def _prepare_input(self, data, time_steps, n_features):
         if isinstance(data, pd.DataFrame):
+            # Dropping datetime columns
             datetime_cols = data.select_dtypes(include=['datetime64[ns]', 'datetime64']).columns.tolist()
             if datetime_cols:
                 logger.warning("Dropping datetime columns from input data: %s", datetime_cols)
             data = data.select_dtypes(exclude=['datetime64[ns]', 'datetime64'])
 
         data = np.array(data)
-
-        # Check if data has the right shape for slicing and reshaping
-        if data.ndim == 1:
-            data = data.reshape(-1, 1)
-
         if data.shape[0] < time_steps:
             logger.error("Not enough data points to reshape. Returning empty array.")
-            return np.array([])
+            return np.array([])  # Returning empty array if not enough data
 
         try:
             reshaped_data = np.array([
-                data[i:i+time_steps] for i in range(data.shape[0] - time_steps)
+                data[i:i + time_steps]
+                for i in range(len(data) - time_steps)
             ])
-            reshaped_data = reshaped_data.reshape(-1, time_steps, n_features)
+            reshaped_data = reshaped_data.reshape((reshaped_data.shape[0], time_steps, n_features))
+            return reshaped_data
         except Exception as e:
-            logger.error("Failed to reshape data: %s", e)
+            logger.error(f"Error while reshaping data: {e}")
             return np.array([])
-
-        return reshaped_data
 
     def predict(self, data):
         data = self._prepare_input(data, self.model.time_steps, self.model.n_features)
         if data.size == 0:
-            logger.warning("Prediction aborted due to invalid input shape.")
             return None
         return self.model.predict(data)
 
     def train(self, data, labels):
         data = self._prepare_input(data, self.model.time_steps, self.model.n_features)
         if data.size == 0:
-            logger.warning("Training aborted due to invalid input shape.")
             return None
         return self.model.train(data, labels)
