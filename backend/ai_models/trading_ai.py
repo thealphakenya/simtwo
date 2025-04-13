@@ -11,15 +11,15 @@ logger = logging.getLogger(__name__)
 
 class TradingAI:
     def __init__(self, model_type="LSTM", time_steps=60, n_features=1, api_key=None, api_secret=None):
-        self.model_type = model_type.upper()
+        self.model_type = model_type.strip().upper()
         self.time_steps = time_steps
         self.n_features = n_features
         logger.info("Initializing TradingAI with model_type=%s", self.model_type)
         self.model = self._init_model(self.model_type, time_steps, n_features, api_key, api_secret)
 
     def _init_model(self, model_type, time_steps, n_features, api_key, api_secret):
-        logger.debug("Requested model_type: '%s'", model_type)
         model_type = model_type.strip().upper()
+        logger.debug("Requested model_type: '%s'", model_type)
 
         if model_type == 'LSTM':
             return LSTMTradingModel(time_steps, n_features)
@@ -27,7 +27,7 @@ class TradingAI:
             return GRUTradingModel(time_steps, n_features)
         elif model_type == 'TRANSFORMER':
             return TransformerTradingModel(time_steps, n_features)
-        elif model_type == 'REINFORCEMENTLEARNING':
+        elif model_type in ['REINFORCEMENTLEARNING', 'REINFORCEMENT']:
             return RLTradingModel(state_size=100, action_size=3)
         else:
             logger.warning("Invalid model_type '%s'. Defaulting to LSTM.", model_type)
@@ -47,13 +47,9 @@ class TradingAI:
         if original_len < time_steps:
             logger.error("Insufficient data: got %d rows, require at least %d.", original_len, time_steps)
             return np.empty((0, time_steps, n_features))
-        elif original_len == time_steps:
-            reshaped_data = data.reshape((1, time_steps, n_features))
-            logger.debug("Input data exactly matches time_steps. Reshaped to %s", reshaped_data.shape)
-            return reshaped_data
 
         try:
-            num_sequences = original_len - time_steps
+            num_sequences = original_len - time_steps + 1
             reshaped_data = np.array([
                 data[i:i + time_steps]
                 for i in range(num_sequences)
@@ -76,10 +72,16 @@ class TradingAI:
             return None
 
         try:
-            logger.info("Predicting on input shape: %s", processed.shape)
             prediction = self.model.predict(processed)
-            logger.debug("Raw prediction output shape: %s", prediction.shape)
-            return prediction.flatten().tolist()
+            if isinstance(prediction, np.ndarray):
+                logger.debug("Raw prediction output shape: %s", prediction.shape)
+                return prediction.flatten().tolist()
+            elif isinstance(prediction, (float, int)):
+                logger.debug("Prediction returned a scalar: %s", prediction)
+                return [float(prediction)]
+            else:
+                logger.error("Unexpected prediction type: %s", type(prediction))
+                return None
         except Exception as e:
             logger.error("Prediction failed: %s", str(e))
             return None
