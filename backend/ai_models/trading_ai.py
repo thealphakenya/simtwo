@@ -1,6 +1,6 @@
 import logging
 import pandas as pd
-import numpy as np  # Added numpy import
+import numpy as np  # Added import for numpy
 from backend.ai_models.lstm_model import LSTMTradingModel
 from backend.ai_models.gru_model import GRUTradingModel
 from backend.ai_models.transformer_model import TransformerTradingModel
@@ -39,20 +39,34 @@ class TradingAI:
 
         # Ensuring data is reshaped correctly (batch_size, time_steps, n_features)
         data = np.array(data)
+
         if data.shape[0] < time_steps:
             logger.error("Not enough data points to reshape. Returning empty array.")
             return np.array([])  # Returning empty array if not enough data
-        reshaped_data = data.reshape((data.shape[0] - time_steps, time_steps, n_features))
+
+        # If there are more data points than needed, truncate the data to fit the shape
+        if data.shape[0] > (time_steps * n_features):
+            data = data[:(time_steps * n_features)]
+
+        # Reshaping data to match (batch_size, time_steps, n_features)
+        try:
+            reshaped_data = data.reshape((-1, time_steps, n_features))
+        except Exception as e:
+            logger.error(f"Error reshaping data: {e}")
+            return np.array([])
+
         return reshaped_data
 
     def predict(self, data):
         data = self._prepare_input(data, self.model.time_steps, self.model.n_features)
         if data.size == 0:
+            logger.warning("No valid data to predict.")
             return None  # Returning None if reshaping failed
         return self.model.predict(data)
 
     def train(self, data, labels):
         data = self._prepare_input(data, self.model.time_steps, self.model.n_features)
         if data.size == 0:
+            logger.warning("No valid data to train.")
             return None  # Returning None if reshaping failed
         return self.model.train(data, labels)
