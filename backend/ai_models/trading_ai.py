@@ -70,7 +70,14 @@ class TradingAI:
         if processed.size == 0:
             logger.warning("No data to predict on after preprocessing.")
             return None
-        return self.model.predict(processed)
+
+        try:
+            prediction = self.model.predict(processed)
+            logger.debug("Raw prediction output shape: %s", prediction.shape)
+            return prediction.flatten().tolist()
+        except Exception as e:
+            logger.error("Prediction failed: %s", str(e))
+            return None
 
     def train(self, data, labels):
         if isinstance(self.model, RLTradingModel):
