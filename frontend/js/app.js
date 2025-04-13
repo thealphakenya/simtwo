@@ -20,6 +20,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const aiStatusIndicator = document.getElementById("ai-status-indicator");
   const themeToggle = document.getElementById("theme-toggle");
   const themeLabel = document.getElementById("theme-label");
+  const startStopButton = document.getElementById("startStopButton");
+  const statusDiv = document.getElementById("status");
+  const balanceDiv = document.getElementById("balance");
 
   let chart;
   let socket;
@@ -83,6 +86,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (balanceEl) {
         balanceEl.textContent = `Balance (${data.account}): $${data.balance.toFixed(2)}`;
       }
+      if (balanceDiv) {
+        balanceDiv.innerHTML = `USDT Balance: ${data.usdt_balance}`;
+      }
     } catch (err) {
       console.error("Balance fetch failed", err);
     }
@@ -137,12 +143,15 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const newData = JSON.parse(event.data);
 
-        if (Array.isArray(newData.chart)) {
-          updateChart(newData.chart);
+        if (newData.type === "market_update") {
+          if (Array.isArray(newData.chart)) updateChart(newData.chart);
+          if (newData.latest) updatePrices(newData.latest);
         }
 
-        if (newData.latest) {
-          updatePrices(newData.latest);
+        if (newData.type === "bot_status") {
+          statusDiv.textContent = newData.running ? "Bot is running" : "Bot is stopped";
+          startStopButton.textContent = newData.running ? "Stop Bot" : "Start Bot";
+          balanceDiv.textContent = `Balance: $${parseFloat(newData.balance).toFixed(2)}`;
         }
       } catch (e) {
         console.error("Invalid WebSocket message:", e);
@@ -160,6 +169,14 @@ document.addEventListener("DOMContentLoaded", () => {
       setTimeout(initializeWebSocket, 5000);
     };
   }
+
+  startStopButton.addEventListener("click", function () {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "toggle_bot" }));
+    } else {
+      showToast("WebSocket not connected.", "error");
+    }
+  });
 
   function updateChart(chartData) {
     if (!chart) return;
@@ -270,7 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeWebSocket();
 
   setInterval(fetchPrice, 10000);
-  setInterval(fetchBalance, 15000);
+  setInterval(fetchBalance, 5000);
 
   window.addEventListener("resize", () => {
     if (chart) {

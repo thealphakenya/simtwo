@@ -27,7 +27,6 @@
             <option value="BNBUSDT">BNBUSDT</option>
             <option value="XRPUSDT">XRPUSDT</option>
             <option value="DOGEUSDT">DOGEUSDT</option>
-            <!-- Add more as needed -->
           </select>
         </div>
       </div>
@@ -35,7 +34,6 @@
       <div id="current-price">
         <strong>Live Prices:</strong>
         <div id="price">
-          <!-- Filled dynamically -->
           <div class="symbol-price" data-symbol="BTCUSDT">BTCUSDT: <span>Loading...</span></div>
           <div class="symbol-price" data-symbol="ETHUSDT">ETHUSDT: <span>Loading...</span></div>
           <div class="symbol-price" data-symbol="BNBUSDT">BNBUSDT: <span>Loading...</span></div>
@@ -108,6 +106,14 @@
       <label for="reinforcement-weight">Reinforcement:</label>
       <input id="reinforcement-weight" class="range-purple" type="range" min="0" max="1" step="0.01" value="0.34" />
       <button id="update-strategy">Update Strategy</button>
+    </section>
+
+    <!-- P2P Bot Section -->
+    <section id="p2p-bot">
+      <h3>Binance P2P Trading Bot</h3>
+      <div id="p2p-status">Status: <span id="status">Not running</span></div>
+      <div id="p2p-balance">Balance: <span id="balance">Loading...</span></div>
+      <button id="startStopButton">Start Bot</button>
     </section>
   </div>
 
