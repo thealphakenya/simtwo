@@ -6,12 +6,12 @@ flask
 flask-socketio
 
 # === ML & Data Science ===
-tensorflow-cpu>=2.11.0
-numpy>=1.21.0
-pandas>=1.3.0
-scikit-learn>=1.0
-scipy>=1.7
-keras>=2.11
+tensorflow-cpu
+numpy
+pandas
+scikit-learn
+scipy
+keras
 joblib
 h5py
 
