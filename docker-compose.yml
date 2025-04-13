@@ -8,11 +8,24 @@ services:
     container_name: trading_backend
     volumes:
       - .:/app
+      - ./certs:/app/certs  # Mount the certs folder for WebSocket server
     ports:
-      - "5000:5000"
+      - "5000:5000"  # Expose port for Flask API
     depends_on:
       - websocket
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development  # Change to 'production' in production environment
     restart: always
+    networks:
+      - trading_network
+    healthcheck:
+      test: ["CMD", "curl", "--silent", "--fail", "http://localhost:5000/health"]
+      interval: 30s          # Run health check every 30 seconds
+      retries: 3             # Retry 3 times before considering the container unhealthy
+      start_period: 10s      # Give the container 10 seconds to start before the first check
+      timeout: 5s            # Timeout after 5 seconds if the check does not respond
+      disable: false         # Disable health check if needed (not in this case)
 
   websocket:
     image: node:18-slim
@@ -20,7 +33,16 @@ services:
     working_dir: /app
     volumes:
       - .:/app
+      - ./certs:/app/certs  # Mount the certs folder for the WebSocket server
     ports:
-      - "8765:8765"
+      - "8765:8765"  # Expose port for WebSocket communication
     command: ["node", "ws_server.js"]
     restart: always
+    environment:
+      - PORT=8765  # Define the port inside the container
+    networks:
+      - trading_network
+
+networks:
+  trading_network:
+    driver: bridge  # Create a bridge network for communication between services
