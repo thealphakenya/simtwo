@@ -40,3 +40,6 @@ openai
 
 # === Optional / Debug / Security ===
 cryptography
+
+# === Local Modules ===
+-e ./backend/ai_models
