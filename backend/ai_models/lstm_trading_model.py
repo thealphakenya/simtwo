@@ -1,22 +1,24 @@
 # backend/ai_models/lstm_trading_model.py
+
 import numpy as np
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dropout, Dense
+from tensorflow.keras.layers import Input, LSTM, Dropout, Dense
 from .base import BaseTradingModel
 
 class LSTMTradingModel(BaseTradingModel):
     def __init__(self, time_steps=10, n_features=None):
         """
         time_steps: Number of time steps for the model (default is 10)
-        n_features: Number of features for the model. If not provided, it will default to 1.
+        n_features: Number of features for the model. If not provided, defaults to 1.
         """
         self.time_steps = time_steps
-        self.n_features = n_features if n_features is not None else 1  # Default to 1 if not provided
+        self.n_features = n_features if n_features is not None else 1
         self.model = self.build_model()
 
     def build_model(self):
         model = Sequential([
-            LSTM(50, input_shape=(self.time_steps, self.n_features), return_sequences=True),
+            Input(shape=(self.time_steps, self.n_features)),
+            LSTM(50, return_sequences=True),
             Dropout(0.2),
             LSTM(50, return_sequences=False),
             Dropout(0.2),
