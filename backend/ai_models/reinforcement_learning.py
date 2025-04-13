@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout
 from .base import BaseTradingModel
-from core.status_manager import StatusManager
+from backend.core.status_manager import StatusManager  # Fixed import
 
 class ReinforcementLearning(BaseTradingModel):
     def __init__(self, api_key, api_secret, time_steps=10, n_features=10):
