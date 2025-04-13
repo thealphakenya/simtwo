@@ -29,7 +29,12 @@ class LSTMTradingModel(BaseTradingModel):
     def _prepare_input(self, X):
         if isinstance(X, pd.DataFrame):
             X = X.select_dtypes(exclude=['datetime64[ns]', 'datetime64']).values
-        X = np.array(X).reshape((X.shape[0], self.time_steps, self.n_features))
+        X = np.array(X)
+        if X.ndim != 3:
+            try:
+                X = X.reshape((X.shape[0], self.time_steps, self.n_features))
+            except Exception as e:
+                raise ValueError(f"Failed to reshape input to (batch_size, {self.time_steps}, {self.n_features}): {e}")
         return X
 
     def train(self, X, y, epochs=10, batch_size=32):
