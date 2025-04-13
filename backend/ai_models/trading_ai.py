@@ -47,6 +47,10 @@ class TradingAI:
         if original_len < time_steps:
             logger.error("Insufficient data: got %d rows, require at least %d.", original_len, time_steps)
             return np.empty((0, time_steps, n_features))
+        elif original_len == time_steps:
+            reshaped_data = data.reshape((1, time_steps, n_features))
+            logger.debug("Input data exactly matches time_steps. Reshaped to %s", reshaped_data.shape)
+            return reshaped_data
 
         try:
             num_sequences = original_len - time_steps
@@ -72,6 +76,7 @@ class TradingAI:
             return None
 
         try:
+            logger.info("Predicting on input shape: %s", processed.shape)
             prediction = self.model.predict(processed)
             logger.debug("Raw prediction output shape: %s", prediction.shape)
             return prediction.flatten().tolist()
