@@ -6,6 +6,8 @@ from backend.ai_models.lstm_model import LSTMTradingModel
 from backend.ai_models.gru_model import GRUTradingModel
 from backend.ai_models.transformer_model import TransformerTradingModel
 from backend.ai_models.rl_model import RLTradingModel
+from backend.exchange_data import fetch_ohlcv_data
+from backend.exchange_api import ExchangeClient  # adjust to your client
 
 logger = logging.getLogger(__name__)
 
@@ -14,13 +16,12 @@ class TradingAI:
         self.model_type = model_type.strip().upper()
         self.time_steps = time_steps
         self.n_features = n_features
+        self.exchange = ExchangeClient(api_key, api_secret)
         logger.info("Initializing TradingAI with model_type=%s", self.model_type)
         self.model = self._init_model(self.model_type, time_steps, n_features, api_key, api_secret)
 
     def _init_model(self, model_type, time_steps, n_features, api_key, api_secret):
         model_type = model_type.strip().upper()
-        logger.debug("Requested model_type: '%s'", model_type)
-
         if model_type == 'LSTM':
             return LSTMTradingModel(time_steps, n_features)
         elif model_type == 'GRU':
@@ -49,10 +50,9 @@ class TradingAI:
             return np.empty((0, time_steps, n_features))
 
         try:
-            num_sequences = original_len - time_steps + 1
             reshaped_data = np.array([
                 data[i:i + time_steps]
-                for i in range(num_sequences)
+                for i in range(original_len - time_steps + 1)
             ])
             reshaped_data = reshaped_data.reshape((-1, time_steps, n_features))
             logger.debug("Reshaped input to %s", reshaped_data.shape)
@@ -64,7 +64,7 @@ class TradingAI:
     def predict(self, data):
         if isinstance(self.model, RLTradingModel):
             logger.warning("Predict called on RLTradingModel. Returning dummy action.")
-            return self.model.choose_action(0)
+            return [self.model.choose_action(0)]
 
         processed = self._prepare_input(data, self.time_steps, self.n_features)
         if processed.size == 0:
@@ -74,10 +74,8 @@ class TradingAI:
         try:
             prediction = self.model.predict(processed)
             if isinstance(prediction, np.ndarray):
-                logger.debug("Raw prediction output shape: %s", prediction.shape)
                 return prediction.flatten().tolist()
             elif isinstance(prediction, (float, int)):
-                logger.debug("Prediction returned a scalar: %s", prediction)
                 return [float(prediction)]
             else:
                 logger.error("Unexpected prediction type: %s", type(prediction))
@@ -86,23 +84,34 @@ class TradingAI:
             logger.error("Prediction failed: %s", str(e))
             return None
 
-    def train(self, data, labels):
-        if isinstance(self.model, RLTradingModel):
-            logger.warning("Training RLTradingModel in dummy loop.")
-            for state in range(99):
-                action = self.model.choose_action(state)
-                reward = np.random.rand()
-                next_state = (state + 1) % 100
-                self.model.learn(state, action, reward, next_state)
-            return "RL model trained (dummy loop)"
+    def execute_trade(self, prediction, symbol="BTCUSDT", quantity=0.001):
+        try:
+            if prediction[-1] > prediction[-2]:
+                logger.info("Signal: Buy %s", symbol)
+                self.exchange.place_order(symbol=symbol, side="BUY", quantity=quantity)
+            elif prediction[-1] < prediction[-2]:
+                logger.info("Signal: Sell %s", symbol)
+                self.exchange.place_order(symbol=symbol, side="SELL", quantity=quantity)
+            else:
+                logger.info("Signal: Hold - no clear movement.")
+        except Exception as e:
+            logger.error("Trade execution failed: %s", str(e))
 
-        processed = self._prepare_input(data, self.time_steps, self.n_features)
-        if processed.size == 0:
-            logger.warning("No data to train on after preprocessing.")
-            return None
-        return self.model.train(processed, labels)
 
-    def fit_predict(self, data, labels):
-        logger.info("Running fit_predict sequence.")
-        self.train(data, labels)
-        return self.predict(data)
+# Global instance (optional singleton)
+trading_ai_instance = TradingAI(model_type="LSTM", time_steps=60, n_features=1)
+
+def run_trading_job():
+    try:
+        df = fetch_ohlcv_data(symbol="BTCUSDT", interval="1m", limit=100)
+        logger.info("Fetched %d OHLCV data points.", len(df))
+
+        prediction = trading_ai_instance.predict(df)
+
+        if prediction is None or len(prediction) < 2:
+            logger.warning("Could not fetch valid prediction for trade.")
+            return
+
+        trading_ai_instance.execute_trade(prediction)
+    except Exception as e:
+        logger.error("Error in run_trading_job: %s", str(e))
