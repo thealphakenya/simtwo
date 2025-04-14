@@ -8,16 +8,12 @@ ENV CUDA_VISIBLE_DEVICES=-1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        gcc \
-        libpq-dev \
-        curl \
-        build-essential \
-        libatlas-base-dev \
-        libopenblas-dev \
-        supervisor && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libatlas-base-dev \
+    libopenblas-dev \
+    supervisor \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY ./backend /app/backend
 COPY requirements.txt .
