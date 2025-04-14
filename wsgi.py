@@ -1,23 +1,17 @@
 import sys
 import os
 
-# Get absolute path to the current directory (where wsgi.py lives)
-app_root = os.path.abspath(os.path.dirname(__file__))
+# Get the absolute path to the directory where wsgi.py is located
+base_dir = os.path.abspath(os.path.dirname(__file__))
 
-# Add project root to sys.path (if it's not already there)
-if app_root not in sys.path:
-    sys.path.insert(0, app_root)
+# Add the base directory to sys.path
+if base_dir not in sys.path:
+    sys.path.insert(0, base_dir)
 
-# Add the backend folder to sys.path (if it's not already there)
-backend_path = os.path.join(app_root, 'backend')
+# Add the backend directory to sys.path
+backend_path = os.path.join(base_dir, 'backend')
 if backend_path not in sys.path:
     sys.path.insert(0, backend_path)
 
-# You might also need to add other folders depending on where your modules are located
-# For example, if you have `core`, you can do this:
-# core_path = os.path.join(app_root, 'core')
-# if core_path not in sys.path:
-#     sys.path.insert(0, core_path)
-
-# Now import the FastAPI app from your app module (assuming it's inside app.py)
-from app import app  # Assumes your FastAPI instance is named `app` in app.py
+# Import the FastAPI app instance from app.py
+from app import app  # Ensure that app.py contains `app = FastAPI()`
