@@ -4,6 +4,7 @@ uvicorn[standard]
 gunicorn
 flask
 flask-socketio
+flask-asgi
 
 # === ML & Data Science ===
 tensorflow-cpu
