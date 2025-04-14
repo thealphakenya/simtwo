@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM python:3.10-bullseye
 
 WORKDIR /app
 
@@ -8,10 +8,12 @@ ENV CUDA_VISIBLE_DEVICES=-1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends gcc
-RUN apt-get install -y --no-install-recommends libatlas-base-dev libopenblas-dev
-RUN apt-get install -y --no-install-recommends supervisor
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libatlas-base-dev \
+    libopenblas-dev \
+    supervisor && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY ./backend /app/backend
 COPY requirements.txt .
