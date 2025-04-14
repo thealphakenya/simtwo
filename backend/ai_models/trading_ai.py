@@ -6,7 +6,7 @@ from backend.ai_models.lstm_model import LSTMTradingModel
 from backend.ai_models.gru_model import GRUTradingModel
 from backend.ai_models.transformer_model import TransformerTradingModel
 from backend.ai_models.rl_model import RLTradingModel
-from backend.exchange_data import fetch_ohlcv_data
+from backend.exchange.exchange_data import fetch_ohlcv_data
 from backend.exchange_api import ExchangeClient  # adjust to your client
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,6 @@ class TradingAI:
                 logger.info("Signal: Hold - no clear movement.")
         except Exception as e:
             logger.error("Trade execution failed: %s", str(e))
-
 
 # Global instance (optional singleton)
 trading_ai_instance = TradingAI(model_type="LSTM", time_steps=60, n_features=1)
