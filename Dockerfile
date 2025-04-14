@@ -8,16 +8,12 @@ ENV CUDA_VISIBLE_DEVICES=-1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        gcc \
-        libpq-dev \
-        curl \
-        build-essential \
-        libatlas-base-dev \
-        libopenblas-dev \
-        redis-server \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Update and install dependencies step by step
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends gcc
+RUN apt-get install -y libpq-dev curl build-essential
+RUN apt-get install -y libatlas-base-dev libopenblas-dev
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY ./backend /app/backend
 COPY requirements.txt .
@@ -33,7 +29,8 @@ COPY . /app
 
 EXPOSE 5000 8765
 
-RUN apt-get install -y supervisor
+# Install Supervisor to manage Flask and Celery
+RUN apt-get update && apt-get install -y supervisor && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY ./docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
