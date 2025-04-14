@@ -8,21 +8,23 @@ from backend.ai_models.transformer_model import TransformerTradingModel
 from backend.ai_models.rl_model import RLTradingModel
 from backend.exchange_api import ExchangeClient  # Adjust to your client
 from backend.exchange.exchange_data import fetch_ohlcv_data as external_ohlcv_data  # Import external data fetch
+from sklearn.preprocessing import StandardScaler  # For scaling
 
 logger = logging.getLogger(__name__)
 
 class TradingAI:
-    def __init__(self, model_type="LSTM", time_steps=60, n_features=1, api_key=None, api_secret=None, use_external=False):
+    def __init__(self, model_type="LSTM", time_steps=60, n_features=1, api_key=None, api_secret=None, use_external=False, scale_data=False):
         self.model_type = model_type.strip().upper()
         self.time_steps = time_steps
         self.n_features = n_features
-        self.use_external = use_external  # New flag to use external data source
+        self.use_external = use_external  # Flag to use external data source
+        self.scale_data = scale_data  # Flag for scaling data
         self.exchange = ExchangeClient(api_key, api_secret)
         logger.info("Initializing TradingAI with model_type=%s", self.model_type)
         self.model = self._init_model(self.model_type, time_steps, n_features, api_key, api_secret)
+        self.scaler = StandardScaler() if scale_data else None  # Initialize scaler if required
 
     def _init_model(self, model_type, time_steps, n_features, api_key, api_secret):
-        model_type = model_type.strip().upper()
         if model_type == 'LSTM':
             return LSTMTradingModel(time_steps, n_features)
         elif model_type == 'GRU':
@@ -42,6 +44,10 @@ class TradingAI:
                 logger.warning("Dropping datetime columns from input data: %s", datetime_cols)
                 data = data.drop(columns=datetime_cols)
             data = data.select_dtypes(include=[np.number])
+
+        # Scaling data if necessary
+        if self.scaler:
+            data = self.scaler.fit_transform(data)
 
         data = np.asarray(data).astype(np.float32)
         original_len = len(data)
