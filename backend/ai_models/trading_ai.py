@@ -6,16 +6,17 @@ from backend.ai_models.lstm_model import LSTMTradingModel
 from backend.ai_models.gru_model import GRUTradingModel
 from backend.ai_models.transformer_model import TransformerTradingModel
 from backend.ai_models.rl_model import RLTradingModel
-from backend.exchange.exchange_data import fetch_ohlcv_data
-from backend.exchange_api import ExchangeClient  # adjust to your client
+from backend.exchange_api import ExchangeClient  # Adjust to your client
+from backend.exchange.exchange_data import fetch_ohlcv_data as external_ohlcv_data  # Import external data fetch
 
 logger = logging.getLogger(__name__)
 
 class TradingAI:
-    def __init__(self, model_type="LSTM", time_steps=60, n_features=1, api_key=None, api_secret=None):
+    def __init__(self, model_type="LSTM", time_steps=60, n_features=1, api_key=None, api_secret=None, use_external=False):
         self.model_type = model_type.strip().upper()
         self.time_steps = time_steps
         self.n_features = n_features
+        self.use_external = use_external  # New flag to use external data source
         self.exchange = ExchangeClient(api_key, api_secret)
         logger.info("Initializing TradingAI with model_type=%s", self.model_type)
         self.model = self._init_model(self.model_type, time_steps, n_features, api_key, api_secret)
@@ -98,11 +99,17 @@ class TradingAI:
             logger.error("Trade execution failed: %s", str(e))
 
 # Global instance (optional singleton)
-trading_ai_instance = TradingAI(model_type="LSTM", time_steps=60, n_features=1)
+trading_ai_instance = TradingAI(model_type="LSTM", time_steps=60, n_features=1, use_external=False)
 
 def run_trading_job():
     try:
-        df = fetch_ohlcv_data(symbol="BTCUSDT", interval="1m", limit=100)
+        if trading_ai_instance.use_external:
+            logger.info("Using external data for trading job.")
+            df = external_ohlcv_data(symbol="BTCUSDT", interval="1m", limit=100)  # External data fetch
+        else:
+            logger.info("Using Binance API data for trading job.")
+            df = fetch_ohlcv_data(symbol="BTCUSDT", interval="1m", limit=100)  # Original method from exchange
+
         logger.info("Fetched %d OHLCV data points.", len(df))
 
         prediction = trading_ai_instance.predict(df)
