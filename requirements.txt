@@ -35,6 +35,10 @@ certifi
 charset-normalizer
 importlib-metadata; python_version < "3.8"
 
+# === Task Queue & Background Jobs ===
+celery
+redis
+
 # === OpenAI Integration ===
 openai
 

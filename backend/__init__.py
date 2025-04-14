@@ -4,12 +4,13 @@ from .ai_models import (
     TransformerTradingModel,
     TradingAI,
     ReinforcementLearning,
+    train_model,
 )
-from .core import StatusManager
-from .data import DataFetcher, get_market_data
-from .trading_logic import OrderExecution, TradingLogic
-from .utils import setup_logger, format_response, Timer, get_safe_position_size
-from .exchange.exchange_data import fetch_ohlcv_data  # Include exchange_data import
+
+from .trading_logic.order_execution import OrderExecution
+from .trading_logic.logic import TradingLogic
+from .ai_models.trading_ai import run_trading_job  # Import run_trading_job from trading_ai
+from .exchange.exchange_data import fetch_ohlcv_data
 
 __all__ = [
     "LSTMTradingModel",
@@ -17,14 +18,9 @@ __all__ = [
     "TransformerTradingModel",
     "TradingAI",
     "ReinforcementLearning",
-    "StatusManager",
-    "DataFetcher",
-    "get_market_data",
+    "train_model",
     "OrderExecution",
     "TradingLogic",
-    "setup_logger",
-    "format_response",
-    "Timer",
-    "get_safe_position_size",
-    "fetch_ohlcv_data",  # Export fetch_ohlcv_data to make it accessible from the backend module
+    "run_trading_job",  # Added run_trading_job to __all__
+    "fetch_ohlcv_data"
 ]

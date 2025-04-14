@@ -1,262 +1,145 @@
 import os
 import logging
-import atexit
-import numpy as np
-from flask import Flask, request, jsonify, send_from_directory
+import hmac
+import hashlib
+import threading
+from flask import Flask, request, jsonify, send_from_directory, render_template
 from flask_socketio import SocketIO
-from apscheduler.schedulers.background import BackgroundScheduler
 from binance.client import Client
 
-# Corrected imports
-from backend.trading_logic.order_execution import OrderExecution
-from backend.ai_models import TradingAI  # Corrected import path
-from backend.data.data_fetcher import DataFetcher  # Corrected import path
-from backend.training_logic.order_execution import execute_order  # Verify this path
+from backend.trading_logic.order_execution import OrderExecution, TradingLogic
+from backend.ai_models.reinforcement_learning import ReinforcementLearning
+from backend.ai_models.neural_network import NeuralNetwork
+from backend.ai_models.lstm_model import LSTMTradingModel
+from backend.data.data_fetcher import DataFetcher
+from backend.tasks import run_trading_job_task  # Import the Celery task
 
 # ===========================
-# 🔧 Config
+# ⚙️ Configuration
 # ===========================
-
 class Config:
+    ENV = os.getenv("ENV", "dev")  # 'prod' or 'dev'
     API_KEY = os.getenv('BINANCE_API_KEY')
     API_SECRET = os.getenv('BINANCE_SECRET_KEY')
     TRADE_SYMBOL = 'BTCUSDT'
     TRADE_QUANTITY = 0.01
-    WEBHOOK_SECRET = 'd9f1a3d47f83e25f92c97a912b3ac31c45ff98c87e2e98b03d78a12a78a813f5'
+    WEBHOOK_SECRET = os.getenv('WEBHOOK_SECRET') or 'demo_secret'
+    USE_EXTERNAL_DATA = ENV == 'prod'
 
 config = Config()
 
 # ===========================
-# ⚙️ Setup
+# 🚀 Flask Setup
 # ===========================
-
 app = Flask(__name__, static_folder='frontend', static_url_path='/frontend')
 socketio = SocketIO(app)
 
-logging.basicConfig(level=logging.DEBUG)
-
-if not config.API_KEY or not config.API_SECRET:
-    logging.error("API Key or Secret is missing!")
+# ===========================
+# 🔐 Binance Client Setup
+# ===========================
+client = None
+if config.USE_EXTERNAL_DATA:
+    try:
+        client = Client(config.API_KEY, config.API_SECRET)
+    except Exception as e:
+        logging.error(f"Error initializing Binance Client: {str(e)}")
+        raise
 else:
-    logging.debug(f"API Key: {config.API_KEY[:4]}... Loaded")
+    logging.info("Running in DEV mode - using simulated data")
 
 # ===========================
-# 🌐 Binance Client + Modules
+# 🧠 AI + Trading Components
 # ===========================
-
-client = Client(config.API_KEY, config.API_SECRET)
-fetcher = DataFetcher(api_key=config.API_KEY, api_secret=config.API_SECRET, trade_symbol=config.TRADE_SYMBOL)
-order_executor = OrderExecution(api_key=config.API_KEY, api_secret=config.API_SECRET)
-
-# ===========================
-# 🧠 AI Models
-# ===========================
-
-lstm_model = TradingAI(model_type='lstm')
-trading_ai = TradingAI(model_type='gru')
-reinforcement_model = TradingAI(model_type='reinforcement', api_key=config.API_KEY, api_secret=config.API_SECRET)
+fetcher = DataFetcher(
+    api_key=config.API_KEY,
+    api_secret=config.API_SECRET,
+    trade_symbol=config.TRADE_SYMBOL,
+    use_external=config.USE_EXTERNAL_DATA
+)
+order_executor = OrderExecution(config.API_KEY, config.API_SECRET)
 
 # ===========================
 # ⚙️ Global State
 # ===========================
-
 ai_managed_preferences = True
 auto_trade_enabled = False
-virtual_account = True
-ai_status = {"state": "IDLE", "details": ""}
-
-def update_ai_status(state: str, details: str = ""):
-    ai_status["state"] = state
-    if "Monitoring" in state and "Prediction" not in details:
-        try:
-            dummy_df = fetcher.fetch_ohlcv_data(config.TRADE_SYMBOL)
-            prediction = round(np.mean([
-                lstm_model.predict(dummy_df)[0][0],
-                trading_ai.predict(dummy_df)[0][0],
-                reinforcement_model.predict(dummy_df)
-            ]), 4)
-            details += f" (Model: Ensemble | Prediction: {prediction}, Threshold: 0.5)"
-        except Exception as e:
-            logging.warning(f"Could not fetch prediction for status: {str(e)}")
-    ai_status["details"] = details or state
-    logging.debug(f"AI STATUS UPDATED: {ai_status}")
+bot_running = False
+bot_thread = None
 
 # ===========================
-# 📡 Routes
+# 🔁 API Routes
 # ===========================
-
 @app.route('/')
 def home():
-    return send_from_directory('frontend', 'index.html')
+    return render_template('index.html', bot_running=bot_running)
 
 @app.route('/frontend/<path:path>')
 def serve_frontend(path):
     return send_from_directory('frontend', path)
 
-@app.route('/api/market_data')
-def get_market_data_api():
-    try:
-        data = fetcher.fetch_ticker(config.TRADE_SYMBOL)
-        return jsonify(data)
-    except Exception as e:
-        logging.error(f"Error fetching market data: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+@app.route('/api/status', methods=['GET'])
+def bot_status():
+    return jsonify({"bot_running": bot_running})
 
-@app.route('/api/order_book')
-def order_book():
-    symbol = request.args.get('symbol', config.TRADE_SYMBOL)
-    try:
-        data = fetcher.fetch_order_book(symbol)
-        return jsonify(data)
-    except Exception as e:
-        logging.error(f"Error fetching order book: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/ohlcv')
-def ohlcv():
-    symbol = request.args.get('symbol', config.TRADE_SYMBOL)
-    try:
-        df = fetcher.fetch_ohlcv_data(symbol)
-        return df.to_json(orient='records')
-    except Exception as e:
-        logging.error(f"Error fetching OHLCV data: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/balance')
-def balance():
-    try:
-        data = fetcher.fetch_balance()
-        return jsonify(data)
-    except Exception as e:
-        logging.error(f"Error fetching balance: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/place_order', methods=['POST'])
-def place_order():
-    data = request.json
-    symbol = data.get('symbol', config.TRADE_SYMBOL)
-    quantity = float(data.get('quantity', config.TRADE_QUANTITY))
-    order_type = data.get('order_type', 'market').lower()
-
-    try:
-        result = execute_order(symbol=symbol, quantity=quantity, order_type=order_type)
-        update_ai_status("ACTIVE — Trading Decision Made", f"Order Placed: {order_type.upper()} {symbol} {quantity}")
-        return jsonify(result)
-    except Exception as e:
-        logging.error(f"Error placing order: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/ai_predict', methods=['POST'])
-def ai_predict():
-    market_data = request.json
-    try:
-        if ai_managed_preferences:
-            model = reinforcement_model
-        else:
-            model = trading_ai
-        prediction = model.predict(np.array(market_data))
-        update_ai_status("ACTIVE — Monitoring...", f"Prediction Result: {prediction.tolist()}")
-        return jsonify({"prediction": prediction.tolist()})
-    except Exception as e:
-        logging.error(f"Error predicting: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/set_preferences', methods=['POST'])
-def set_preferences():
-    global ai_managed_preferences, auto_trade_enabled
-    prefs = request.json
-    ai_managed_preferences = prefs.get('ai_managed_preferences', ai_managed_preferences)
-    auto_trade_enabled = prefs.get('auto_trade_enabled', auto_trade_enabled)
-    return jsonify({
-        "status": "Preferences updated",
-        "ai_managed_preferences": ai_managed_preferences,
-        "auto_trade_enabled": auto_trade_enabled
-    })
-
-@app.route('/api/ai_status')
-def get_ai_status():
-    return jsonify(ai_status)
-
-@app.route('/api/run_simulation', methods=['POST'])
-def run_simulation():
-    try:
-        result = simulate_trading_strategy()
-        return jsonify(result)
-    except Exception as e:
-        logging.error(f"Error running simulation: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/emergency_stop', methods=['POST'])
-def emergency_stop():
-    stop_trading()
-    return jsonify({"status": "Emergency stop activated"})
+@app.route('/api/start_stop_bot', methods=['POST'])
+def start_stop_bot():
+    global bot_running, bot_thread
+    if bot_running:
+        stop_bot()
+        return jsonify({"status": "Bot stopped"})
+    else:
+        start_bot()
+        return jsonify({"status": "Bot started"})
 
 # ===========================
-# ⚙️ Background Logic
+# 🤖 Bot Logic
 # ===========================
+def start_bot():
+    global bot_running
+    if not bot_running:
+        bot_running = True
+        # Use Celery to run the trading job in the background
+        run_trading_job_task.delay()  # Trigger the Celery task
+        logging.info("Trading bot started")
 
-def simulate_trading_strategy():
-    return {
-        "P&L": 1500,
-        "Sharpe Ratio": 1.75,
-        "Win Rate": 65,
-        "Max Drawdown": -10
-    }
-
-def stop_trading():
-    scheduler.pause()
-    logging.warning("Emergency stop: Scheduler paused")
-
-def run_trading_job():
-    update_ai_status("ACTIVE — Monitoring...")
-    try:
-        ticker = fetcher.fetch_ticker(config.TRADE_SYMBOL)
-        logging.debug("Ticker data: %s", ticker)
-    except Exception as e:
-        update_ai_status("ERROR", str(e))
+def stop_bot():
+    global bot_running
+    bot_running = False
+    logging.info("Trading bot stopped")
 
 # ===========================
-# ⏰ Scheduler Setup
+# 📡 Webhook Verification
 # ===========================
+def verify_webhook_signature(request):
+    received_sig = request.headers.get('X-Signature')
+    if not received_sig:
+        logging.warning("🚫 Webhook signature missing!")
+        return False
 
-scheduler = BackgroundScheduler()
-scheduler.add_job(run_trading_job, trigger='interval', seconds=60)
-scheduler.start()
-atexit.register(lambda: scheduler.shutdown())
+    computed_sig = hmac.new(
+        key=config.WEBHOOK_SECRET.encode(),
+        msg=request.get_data(),
+        digestmod=hashlib.sha256
+    ).hexdigest()
 
-# ===========================
-# ❤️ Health Check
-# ===========================
+    if not hmac.compare_digest(received_sig, computed_sig):
+        logging.warning("🚫 Webhook signature mismatch!")
+        return False
+    return True
 
-@app.route('/health')
-def health_check():
-    health_data = {"status": "healthy", "message": "All systems running smoothly."}
-    try:
-        # Check Binance API connectivity
-        try:
-            client.ping()
-            health_data["binance_api"] = "Connected"
-        except Exception as e:
-            health_data["binance_api"] = f"Failed: {str(e)}"
-        
-        # Check DataFetcher functionality
-        try:
-            fetcher.fetch_ticker(config.TRADE_SYMBOL)
-            health_data["data_fetcher"] = "Working"
-        except Exception as e:
-            health_data["data_fetcher"] = f"Failed: {str(e)}"
-        
-        return jsonify(health_data)
-    
-    except Exception as e:
-        health_data["status"] = "unhealthy"
-        health_data["error"] = str(e)
-        return jsonify(health_data), 500
+@app.route('/webhook', methods=['POST'])
+def webhook_listener():
+    if not verify_webhook_signature(request):
+        return jsonify({"error": "Invalid signature"}), 401
+
+    event = request.json
+    logging.info(f"📬 Webhook received: {event.get('event')} | status: {event.get('status')}")
+    return jsonify({"status": "Webhook received"}), 200
 
 # ===========================
-# ▶️ App Launch
+# 🏁 Launch App
 # ===========================
-
 if __name__ == '__main__':
-    logging.info("Starting Simtwo Flask App")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    logging.basicConfig(level=logging.DEBUG)
+    logging.info("🚀 Starting Flask Trading Bot App")
+    app.run(host='0.0.0.0', port=5000, debug=config.ENV != 'prod')

@@ -7,6 +7,9 @@ services:
     container_name: simtwo_backend
     ports:
       - "5000:5000"
+      - "8000:8000"
+    depends_on:
+      - redis
     networks:
       - simtwo-net
 
@@ -18,6 +21,14 @@ services:
       - "8765:8765"
     depends_on:
       - backend
+    networks:
+      - simtwo-net
+
+  redis:
+    image: redis:latest
+    container_name: simtwo_redis
+    ports:
+      - "6379:6379"
     networks:
       - simtwo-net
 

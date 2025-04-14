@@ -16,6 +16,7 @@ RUN apt-get update && \
         build-essential \
         libatlas-base-dev \
         libopenblas-dev \
+        redis-server \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY ./backend /app/backend
@@ -32,4 +33,8 @@ COPY . /app
 
 EXPOSE 5000 8765
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+RUN apt-get install -y supervisor
+
+COPY ./docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+CMD ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
