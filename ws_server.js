@@ -10,6 +10,7 @@ const app = express();
 const certPath = "certificate.crt";
 const keyPath = "private.key";
 
+// Function to generate self-signed certificates if they don't exist
 const generateSelfSignedCerts = () => {
   if (!fs.existsSync(certPath) || !fs.existsSync(keyPath)) {
     console.log("Certificates not found. Generating self-signed certificates...");
@@ -53,9 +54,11 @@ wss.on("connection", (ws) => {
     balance: botBalance,
   }));
 
+  // Handle messages from the frontend
   ws.on("message", (msg) => {
     try {
       const data = JSON.parse(msg);
+
       if (data.type === "toggle_bot") {
         botRunning = !botRunning;
         botBalance = Math.random() * 1000; // Simulated new balance
@@ -66,6 +69,7 @@ wss.on("connection", (ws) => {
           balance: botBalance.toFixed(2),
         };
 
+        // Broadcast new status to all connected clients
         wss.clients.forEach(client => {
           if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify(update));
@@ -75,8 +79,13 @@ wss.on("connection", (ws) => {
         console.log(`Bot toggled. Running: ${botRunning}, Balance: $${botBalance.toFixed(2)}`);
       }
     } catch (e) {
-      console.warn("Invalid WebSocket message:", msg);
+      console.warn("Invalid WebSocket message:", msg, e);
     }
+  });
+
+  // Handle WebSocket client closure
+  ws.on("close", () => {
+    console.log("Client disconnected from WebSocket.");
   });
 });
 
@@ -120,6 +129,7 @@ BinanceWS.onmessage = async (event) => {
   };
 
   const message = JSON.stringify(updatePayload);
+  // Broadcast market update to all WebSocket clients
   wss.clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
@@ -127,6 +137,16 @@ BinanceWS.onmessage = async (event) => {
   });
 };
 
+// Start the server on HTTPS port 8443
 server.listen(8443, () => {
   console.log("Server listening on https://localhost:8443");
+});
+
+// Graceful shutdown handling
+process.on("SIGINT", () => {
+  console.log("Shutting down server...");
+  server.close(() => {
+    console.log("Server closed.");
+    process.exit(0);
+  });
 });

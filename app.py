@@ -140,6 +140,15 @@ def webhook_listener():
 # 🏁 Launch App
 # ===========================
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    # Enable detailed logging
+    logging.basicConfig(
+        level=logging.DEBUG,  # Set logging level to DEBUG to capture detailed logs
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(),  # Output to the console
+            logging.FileHandler("/var/log/flask.debug.log"),  # Log to a file as well
+        ]
+    )
+    
     logging.info("🚀 Starting Flask Trading Bot App")
     app.run(host='0.0.0.0', port=5000, debug=config.ENV != 'prod')
