@@ -3,14 +3,14 @@ name: Fly Deploy
 on:
   push:
     branches:
-      - main  # Adjust to 'master' if your default branch is master
+      - main  # Update this if your default branch is different
 
 jobs:
   deploy:
     name: Deploy app
-    runs-on: ubuntu-latest
-    
-    concurrency: deploy-group  # Prevents overlapping deployments
+    runs-on: ubuntu-latest  # Use the latest Ubuntu image
+
+    concurrency: deploy-group  # Optional: avoids parallel deploys
 
     steps:
       - name: Checkout repository
@@ -19,12 +19,12 @@ jobs:
       - name: Set up Fly CLI
         uses: superfly/flyctl-actions/setup-flyctl@v1
 
-      - name: Set Fly.io auth token
-        run: echo "Authentication token available"
+      - name: Authenticate to Fly.io
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}  # Set this in GitHub repo secrets
+        run: flyctl auth token  # Authenticate using token only, no browser interaction
 
       - name: Deploy to Fly.io
         env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: flyctl deploy --remote-only --app simtwo
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}  # Ensure token is available here too
+        run: flyctl deploy --remote-only --app simtwo  # Replace with your app name if different
