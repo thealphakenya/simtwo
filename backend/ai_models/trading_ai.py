@@ -11,9 +11,13 @@ from backend.exchange.exchange_data import fetch_ohlcv_data as external_ohlcv_da
 from sklearn.preprocessing import StandardScaler  # For scaling
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 class TradingAI:
     def __init__(self, model_type="LSTM", time_steps=60, n_features=1, api_key=None, api_secret=None, use_external=False, scale_data=False):
+        """
+        Initialize the TradingAI class with model type, data preprocessing, and API credentials.
+        """
         self.model_type = model_type.strip().upper()
         self.time_steps = time_steps
         self.n_features = n_features
@@ -25,6 +29,9 @@ class TradingAI:
         self.scaler = StandardScaler() if scale_data else None  # Initialize scaler if required
 
     def _init_model(self, model_type, time_steps, n_features, api_key, api_secret):
+        """
+        Initialize the model based on the specified model type.
+        """
         if model_type == 'LSTM':
             return LSTMTradingModel(time_steps, n_features)
         elif model_type == 'GRU':
@@ -38,6 +45,9 @@ class TradingAI:
             return LSTMTradingModel(time_steps, n_features)
 
     def _prepare_input(self, data, time_steps, n_features):
+        """
+        Preprocess data to be fed into the model, including reshaping and scaling.
+        """
         if isinstance(data, pd.DataFrame):
             datetime_cols = data.select_dtypes(include=['datetime64']).columns.tolist()
             if datetime_cols:
@@ -57,10 +67,7 @@ class TradingAI:
             return np.empty((0, time_steps, n_features))
 
         try:
-            reshaped_data = np.array([
-                data[i:i + time_steps]
-                for i in range(original_len - time_steps + 1)
-            ])
+            reshaped_data = np.array([data[i:i + time_steps] for i in range(original_len - time_steps + 1)])
             reshaped_data = reshaped_data.reshape((-1, time_steps, n_features))
             logger.debug("Reshaped input to %s", reshaped_data.shape)
             return reshaped_data
@@ -69,6 +76,9 @@ class TradingAI:
             return np.empty((0, time_steps, n_features))
 
     def predict(self, data):
+        """
+        Predict the next market movement using the trained model.
+        """
         if isinstance(self.model, RLTradingModel):
             logger.warning("Predict called on RLTradingModel. Returning dummy action.")
             return [self.model.choose_action(0)]
@@ -92,6 +102,9 @@ class TradingAI:
             return None
 
     def execute_trade(self, prediction, symbol="BTCUSDT", quantity=0.001):
+        """
+        Execute a trade based on the prediction (BUY/SELL) signal.
+        """
         try:
             if prediction[-1] > prediction[-2]:
                 logger.info("Signal: Buy %s", symbol)
@@ -108,6 +121,9 @@ class TradingAI:
 trading_ai_instance = TradingAI(model_type="LSTM", time_steps=60, n_features=1, use_external=False)
 
 def run_trading_job():
+    """
+    Run the trading job by fetching market data, making predictions, and executing trades.
+    """
     try:
         if trading_ai_instance.use_external:
             logger.info("Using external data for trading job.")
@@ -127,3 +143,4 @@ def run_trading_job():
         trading_ai_instance.execute_trade(prediction)
     except Exception as e:
         logger.error("Error in run_trading_job: %s", str(e))
+        logger.exception("Exception traceback")

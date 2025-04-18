@@ -5,7 +5,7 @@ import hashlib
 import threading
 from flask import Flask, request, jsonify, send_from_directory, render_template
 from flask_socketio import SocketIO
-from binance.client import Client
+from bitget.rest_api import bitget  # Import Bitget SDK
 
 from backend.trading_logic.order_execution import OrderExecution, TradingLogic
 from backend.ai_models.reinforcement_learning import ReinforcementLearning
@@ -19,8 +19,9 @@ from backend.tasks import run_trading_job_task  # Import the Celery task
 # ===========================
 class Config:
     ENV = os.getenv("ENV", "dev")  # 'prod' or 'dev'
-    API_KEY = os.getenv('BINANCE_API_KEY')
-    API_SECRET = os.getenv('BINANCE_SECRET_KEY')
+    API_KEY = os.getenv('BITGET_API_KEY')
+    API_SECRET = os.getenv('BITGET_SECRET_KEY')
+    PASSPHRASE = os.getenv('BITGET_PASSPHRASE')  # Bitget also requires a passphrase
     TRADE_SYMBOL = 'BTCUSDT'
     TRADE_QUANTITY = 0.01
     WEBHOOK_SECRET = os.getenv('WEBHOOK_SECRET') or 'demo_secret'
@@ -35,14 +36,15 @@ app = Flask(__name__, static_folder='frontend', static_url_path='/frontend')
 socketio = SocketIO(app)
 
 # ===========================
-# 🔐 Binance Client Setup
+# 🔐 Bitget Client Setup
 # ===========================
 client = None
 if config.USE_EXTERNAL_DATA:
     try:
-        client = Client(config.API_KEY, config.API_SECRET)
+        # Initialize Bitget client with API keys and passphrase
+        client = bitget(api_key=config.API_KEY, secret_key=config.API_SECRET, passphrase=config.PASSPHRASE)
     except Exception as e:
-        logging.error(f"Error initializing Binance Client: {str(e)}")
+        logging.error(f"Error initializing Bitget Client: {str(e)}")
         raise
 else:
     logging.info("Running in DEV mode - using simulated data")

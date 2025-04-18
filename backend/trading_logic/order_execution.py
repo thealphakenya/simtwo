@@ -1,20 +1,15 @@
 import time
 import logging
 import numpy as np
-from binance.client import Client
-from binance.enums import (
-    SIDE_BUY, SIDE_SELL,
-    ORDER_TYPE_MARKET, ORDER_TYPE_LIMIT,
-    TIME_IN_FORCE_GTC
-)
+from bitget.rest_api import bitget  # Import Bitget SDK
 from backend.ai_models import TradingAI, ReinforcementLearning
 from backend.victorq.neutralizer import TradingHelper
 from .logic import TradingLogic
 from backend.ai_models.neural_network import NeuralNetwork
 
 class OrderExecution:
-    def __init__(self, api_key, api_secret):
-        self.client = Client(api_key, api_secret)
+    def __init__(self, api_key, api_secret, passphrase):
+        self.client = bitget(api_key=api_key, secret_key=api_secret, passphrase=passphrase)  # Bitget client
         self.logic = TradingLogic()
         logging.basicConfig(level=logging.INFO)
 
@@ -26,19 +21,20 @@ class OrderExecution:
 
     def _validate_order_parameters(self, symbol, quantity, price=None):
         try:
-            exchange_info = self.client.get_exchange_info()
-            symbol_info = next(item for item in exchange_info['symbols'] if item['symbol'] == symbol)
-            min_qty = float(symbol_info['filters'][1]['minQty'])
-            qty_step = float(symbol_info['filters'][1]['stepSize'])
+            # For Bitget, we can use the /market/symbols endpoint to get symbol details (for validation)
+            exchange_info = self.client.get_market_symbol()
+            symbol_info = next(item for item in exchange_info['data'] if item['symbol'] == symbol)
+            min_qty = float(symbol_info['minQty'])
+            qty_step = float(symbol_info['stepSize'])
 
             if quantity < min_qty or quantity % qty_step != 0:
                 logging.error(f"Invalid quantity for {symbol}: {quantity}")
                 return False
 
             if price:
-                min_price = float(symbol_info['filters'][0]['minPrice'])
-                max_price = float(symbol_info['filters'][0]['maxPrice'])
-                tick_size = float(symbol_info['filters'][0]['tickSize'])
+                min_price = float(symbol_info['minPrice'])
+                max_price = float(symbol_info['maxPrice'])
+                tick_size = float(symbol_info['tickSize'])
 
                 if price < min_price or price > max_price or price % tick_size != 0:
                     logging.error(f"Invalid price for {symbol}: {price}")
@@ -49,14 +45,14 @@ class OrderExecution:
             logging.error(f"Validation error: {e}")
             return False
 
-    def place_market_order(self, symbol='BTCUSDT', side=SIDE_BUY, quantity=1.0):
+    def place_market_order(self, symbol='BTCUSDT', side='buy', quantity=1.0):
         try:
             if not self._validate_order_parameters(symbol, quantity):
                 return {"error": "Invalid order parameters."}
             order = self.client.create_order(
                 symbol=symbol,
                 side=side,
-                type=ORDER_TYPE_MARKET,
+                type='market',
                 quantity=quantity
             )
             logging.info(f"Market order placed: {order}")
@@ -65,17 +61,17 @@ class OrderExecution:
             logging.error(f"Market order failed: {e}")
             return {"error": str(e)}
 
-    def place_limit_order(self, symbol='BTCUSDT', side=SIDE_BUY, quantity=1.0, price=50000.0):
+    def place_limit_order(self, symbol='BTCUSDT', side='buy', quantity=1.0, price=50000.0):
         try:
             if not self._validate_order_parameters(symbol, quantity, price):
                 return {"error": "Invalid order parameters."}
             order = self.client.create_order(
                 symbol=symbol,
                 side=side,
-                type=ORDER_TYPE_LIMIT,
+                type='limit',
                 quantity=quantity,
                 price=str(price),
-                timeInForce=TIME_IN_FORCE_GTC
+                timeInForce='GTC'
             )
             logging.info(f"Limit order placed: {order}")
             return order
@@ -85,7 +81,7 @@ class OrderExecution:
 
     def cancel_order(self, symbol='BTCUSDT', order_id=None):
         try:
-            cancellation = self.client.cancel_order(symbol=symbol, orderId=order_id)
+            cancellation = self.client.cancel_order(symbol=symbol, order_id=order_id)
             logging.info(f"Order cancelled: {cancellation}")
             return cancellation
         except Exception as e:
