@@ -3,25 +3,29 @@ name: Deploy to Fly.io
 on:
   push:
     branches:
-      - main
+      - main  # This triggers the workflow whenever there's a push to the main branch
 
 jobs:
   deploy:
     name: Deploy to Fly
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Use the latest Ubuntu image for the runner
 
     steps:
-      # Step 1: Checkout the code from the repository
-      - uses: actions/checkout@v4
+      # Step 1: Checkout the repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # Step 2: Install the Fly CLI
-      - name: Install Fly CLI
-        uses: superfly/flyctl-actions/setup-flyctl@master
+      # Step 2: Set up Fly CLI (Flyctl)
+      - name: Set up Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@v1
 
-      # Step 3: Authenticate to Fly.io using the API token
+      # Step 3: Authenticate using the Fly API token
       - name: Authenticate to Fly.io
-        run: echo "${{ secrets.FLY_API_TOKEN }}" | flyctl auth login --token
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}  # GitHub secret for Fly API token
+        run: |
+          echo $FLY_API_TOKEN | flyctl auth login --access-token
 
-      # Step 4: Deploy to Fly using the Fly API Token for authentication
-      - name: Deploy App
-        run: flyctl deploy --remote-only
+      # Step 4: Deploy the app to Fly.io
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only  # Deploy using Fly.toml configuration
