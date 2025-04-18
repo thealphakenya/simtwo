@@ -1,13 +1,13 @@
 # fly.toml file for the Simtwo app
 app = "simtwo"  # Replace with your Fly app name
 
-primary_region = "ord"  # Choose closest region (ord = Chicago, you can change it)
+primary_region = "ord"  # Chicago region (change it if needed)
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = "Dockerfile"  # Reference to the Dockerfile
 
 [env]
-  PORT = "5000"  # Match the port your app actually runs on
+  PORT = "5000"  # Ensure the port your app listens to
   ENV = "prod"  # Set to 'prod' for production
   DOCKER_PASSWORD = "Victor9798!"  # Docker credentials
   DOCKER_USERNAME = "thekingkenya"
@@ -34,17 +34,17 @@ primary_region = "ord"  # Choose closest region (ord = Chicago, you can change i
   PM2_PUBLIC_KEY = "ddwn8vexlp5c52f"
   PM2_SECRET_KEY = "wzpyspc0bq74exi"
   LOG_LEVEL = "info"
-  Verbose = "0"
+  VERBOSE = "0"
   FLY_API_TOKEN = "FlyV1 fm2_lJPECAAAAAAACHpaxBBcchQS7yEaY7NMcoQliSfOwrVodHRwczovL2FwaS5mbHkuaW8vdjGUAJLOAA8mqh8Lk7lodHRwczovL2FwaS5mbHkuaW8vYWFhL3YxxDzQLtGON4z3Xd3jxYoqxbCWk2fPgyKWunKIeAGcCXoWBu/DQvtD4a2mISPhB1RJd1JHNkOs2sdO/obyONXETgTklMsNKT3+1tL3Ct44iKa9hD7nTH2UY8G9b2GWN1+/UxloqeBB5z9u7Od19dUS5sGsV7cWkB0HrthTlLI8hi6+bO0KwDNxNXEjqa9KB8QgVlMtfyb+TvQ53sMHzc6GdENR55yQghOvmB0yT2btiHo="
 
 [[services]]
-  internal_port = 5000  # Same here
+  internal_port = 5000  # Make sure this matches your app's listening port
   protocol = "tcp"
 
   [[services.ports]]
     handlers = ["http"]
-    port = 80
+    port = 80  # Standard HTTP port
 
   [[services.ports]]
     handlers = ["tls", "http"]
-    port = 443
+    port = 443  # Standard HTTPS port
